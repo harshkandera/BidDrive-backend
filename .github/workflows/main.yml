@@ -46,6 +46,6 @@ jobs:
             -e MAIL_HOST='${{ secrets.MAIL_HOST }}' \  # Mail host
             -e MAIL_PASS='${{ secrets.MAIL_PASS }}' \  # Mail password
             -e MAIL_USER='${{ secrets.MAIL_USER }}' \  # Mail user
-            -e NODE_ENV='production' \  # Set the environment to production
+            -e NODE_ENV='production' \  # Set the environment
             -e PORT=8000 \  # Set the port
             BidDrive/nodejs-app:latest
