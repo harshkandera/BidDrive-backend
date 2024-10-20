@@ -1,0 +1,50 @@
+name: Deploy Node Application
+
+on: 
+  push:
+    branches:
+      - mern-ec2-docker
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker Image
+        run: docker build -t BidDrive/nodejs-app:latest .
+
+      - name: Publish Image to Docker Hub
+        run: docker push BidDrive/nodejs-app:latest
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+
+    steps:
+      - name: Pull image from Docker Hub
+        run: docker pull BidDrive/nodejs-app:latest
+
+      - name: Delete old container
+        run: docker rm -f nodejs-app-container || true  # Do not fail if the container doesn't exist
+
+      - name: Run Docker Container
+        run: docker run -d --name nodejs-app-container \
+          -p 8000:8000 \  # Map port 8000
+          -e MONGO_PASSWORD='${{ secrets.MONGO_PASSWORD }}' \  # MongoDB password
+          -e MONGO_URI='${{ secrets.MONGO_URI }}' \  # MongoDB URI
+          -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \  # JWT secret
+          -e CLOUD_NAME='${{ secrets.CLOUD_NAME }}' \  # Cloud service name
+          -e API_KEY='${{ secrets.API_KEY }}' \  # API key
+          -e API_SECRET='${{ secrets.API_SECRET }}' \  # API secret
+          -e MAIL_HOST='${{ secrets.MAIL_HOST }}' \  # Mail host
+          -e MAIL_PASS='${{ secrets.MAIL_PASS }}' \  # Mail password
+          -e MAIL_USER='${{ secrets.MAIL_USER }}' \  # Mail user
+          -e NODE_ENV='production' \  # Set the environment to production
+          -e PORT=8000 \  # Set the port
+          BidDrive/nodejs-app:latest
