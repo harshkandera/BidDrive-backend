@@ -14,7 +14,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Login to Docker Hub
-        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
       - name: Build Docker Image
         run: docker build -t BidDrive/nodejs-app:latest .
@@ -31,7 +31,7 @@ jobs:
         run: docker pull BidDrive/nodejs-app:latest
 
       - name: Delete old container
-        run: docker rm -f nodejs-app-container  
+        run: docker rm -f nodejs-app-container || true  # Do not fail if the container doesn't exist
 
       - name: Run Docker Container
         run: |
@@ -46,6 +46,6 @@ jobs:
             -e MAIL_HOST='${{ secrets.MAIL_HOST }}' \  # Mail host
             -e MAIL_PASS='${{ secrets.MAIL_PASS }}' \  # Mail password
             -e MAIL_USER='${{ secrets.MAIL_USER }}' \  # Mail user
-            -e NODE_ENV='production' \  # Set the environment
+            -e NODE_ENV='production' \  # Set the environment 
             -e PORT=8000 \  # Set the port
             BidDrive/nodejs-app:latest
