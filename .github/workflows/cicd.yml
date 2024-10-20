@@ -29,9 +29,9 @@ jobs:
     steps:
       - name: Pull image from Docker Hub
         run: docker pull BidDrive/nodejs-app:latest
-
+        
       - name: Delete old container
-        run: docker rm -f nodejs-app-container || true  # Do not fail if the container doesn't exist
+        run: docker rm -f nodejs-app-container  
 
       - name: Run Docker Container
         run: |
