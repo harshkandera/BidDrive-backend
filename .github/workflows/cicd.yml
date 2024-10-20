@@ -29,7 +29,7 @@ jobs:
     steps:
       - name: Pull image from Docker Hub
         run: docker pull BidDrive/nodejs-app:latest
-        
+
       - name: Delete old container
         run: docker rm -f nodejs-app-container  
 
@@ -37,7 +37,7 @@ jobs:
         run: |
           docker run -d --name nodejs-app-container \
             -p 8000:8000 \  # Map port 8000
-            -e MONGO_PASSWORD='${{ secrets.MONGO_PASSWORD }}' \  # MongoDB password
+            -e MONGO_PASSWORD='${{ secrets.MONGO_PASSWORD }}' \  # MongoDB 
             -e MONGO_URI='${{ secrets.MONGO_URI }}' \  # MongoDB URI
             -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \  # JWT secret
             -e CLOUD_NAME='${{ secrets.CLOUD_NAME }}' \  # Cloud service name
