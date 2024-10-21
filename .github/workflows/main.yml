@@ -30,7 +30,7 @@ jobs:
 
       - name: Delete old container
         run: docker rm -f nodejs-app-container || true 
-
+        
       - name: Run Docker Container
         run: |
           docker run -d --name nodejs-app-container \
@@ -46,4 +46,4 @@ jobs:
             -e MAIL_USER='${{ secrets.MAIL_USER }}' \  # Mail user
             -e NODE_ENV='production' \  # Set the environment
             -e PORT=8000 \  # Set the port
-            harshkandera/biddrive:latest
+            harshkandera/biddrive:latest  # Ensure no trailing backslash
