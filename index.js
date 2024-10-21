@@ -4,14 +4,15 @@ const cors = require("cors")
 const app = express()
 const http = require("http"); 
 const { init } = require('./config/socketConfig');
-// const events = require('');
-const { Server } = require("socket.io");
 
 
 app.use(express.json())
+
+
 const corsOptions = {
-  origin: 'http://localhost:3000',
-  credentials: true, 
+  origin: ['https://bid-drive.com', 'https://www.bid-drive.com'], // Add your allowed origins
+  methods: ['GET', 'POST'], // Specify the allowed methods
+  credentials: true, // Allow credentials (if needed)
 };
 
 app.use(cors(corsOptions));

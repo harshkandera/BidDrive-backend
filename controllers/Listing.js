@@ -343,7 +343,7 @@ exports.FilterListings = async (req, res, next) => {
 
     const match = {};
 
-    console.log(req.body);
+    // console.log(req.body);
 
     // Keyword filtering
     if (keyword) {
