@@ -14,10 +14,10 @@ jobs:
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
       - name: Build Docker Image
-        run: docker build -t BidDrive/nodejs-app:latest .
+        run: docker build -t harshkandera/biddrive:latest .
 
       - name: Publish Image to Docker Hub
-        run: docker push BidDrive/nodejs-app:latest
+        run: docker push harshkandera/biddrive:latest
 
   deploy:
     needs: build
@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Pull image from Docker Hub
-        run: docker pull BidDrive/nodejs-app:latest
+        run: docker pull harshkandera/biddrive:latest
 
       - name: Delete old container
         run: docker rm -f nodejs-app-container || true 
@@ -34,7 +34,7 @@ jobs:
         run: |
           docker run -d --name nodejs-app-container \
             -p 8000:8000 \  # Map port 8000
-            -e MONGO_PASSWORD='${{ secrets.MONGO_PASSWORD }}' \  # MongoDB 
+            -e MONGO_PASSWORD='${{ secrets.MONGO_PASSWORD }}' \  # MongoDB password
             -e MONGO_URI='${{ secrets.MONGO_URI }}' \  # MongoDB URI
             -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \  # JWT secret
             -e CLOUD_NAME='${{ secrets.CLOUD_NAME }}' \  # Cloud service name
@@ -45,4 +45,4 @@ jobs:
             -e MAIL_USER='${{ secrets.MAIL_USER }}' \  # Mail user
             -e NODE_ENV='production' \  # Set the environment
             -e PORT=8000 \  # Set the port
-            BidDrive/nodejs-app:latest
+            harshkandera/biddrive:latest
