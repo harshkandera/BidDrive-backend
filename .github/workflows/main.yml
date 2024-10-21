@@ -24,25 +24,12 @@ jobs:
     steps:
       - name: Login to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-        
+
       - name: Pull image from Docker Hub
         run: docker pull harshkandera/biddrive:latest
 
       - name: Delete old container
-        run: docker rm -f nodejs-app-container || true 
-        
+        run: docker rm -f nodejs-app-container || true
+
       - name: Run Docker Container
-        run: |
-          docker run -d --name nodejs-app-container \
-            -p 8000:8000 \  # Map port 8000
-            -e MONOGODB_URL='${{ secrets.MONOGODB_URL }}' \  # MongoDB URI
-            -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \  # JWT secret
-            -e CLOUD_NAME='${{ secrets.CLOUD_NAME }}' \  # Cloud service name
-            -e API_KEY='${{ secrets.API_KEY }}' \  # API key
-            -e API_SECRET='${{ secrets.API_SECRET }}' \  # API secret
-            -e MAIL_HOST='${{ secrets.MAIL_HOST }}' \  # Mail host
-            -e MAIL_PASS='${{ secrets.MAIL_PASS }}' \  # Mail password
-            -e MAIL_USER='${{ secrets.MAIL_USER }}' \  # Mail user
-            -e NODE_ENV='production' \  # Set the environment
-            -e PORT='${{ secrets.PORT }}' \  # Set the port
-            harshkandera/biddrive:latest  # Ensure no trailing backslash
+        run: docker run -d -p 8000:8000 --name nodejs-app-container -e MONOGODB_URL='${{ secrets.MONOGODB_URL }}' -e JWT_SECRET='${{ secrets.JWT_SECRET }}' -e CLOUD_NAME='${{ secrets.CLOUD_NAME }}' -e API_KEY='${{ secrets.API_KEY }}' -e API_SECRET='${{ secrets.API_SECRET }}' -e MAIL_HOST='${{ secrets.MAIL_HOST }}' -e MAIL_PASS='${{ secrets.MAIL_PASS }}' -e MAIL_USER='${{ secrets.MAIL_USER }}' -e NODE_ENV='production' -e PORT='${{ secrets.PORT }}' harshkandera/biddrive:latest
