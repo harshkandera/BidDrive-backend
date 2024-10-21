@@ -31,8 +31,8 @@ jobs:
       - name: Delete old container
         run: docker rm -f nodejs-app-container || true 
         
-      - name: Run Docker Container
-        run: |
+         - name: Run Docker Container
+         run: |
           docker run -d --name nodejs-app-container \
             -p 8000:8000 \  # Map port 8000
             -e MONOGODB_URL='${{ secrets.MONOGODB_URL }}' \  # MongoDB URI
@@ -44,5 +44,5 @@ jobs:
             -e MAIL_PASS='${{ secrets.MAIL_PASS }}' \  # Mail password
             -e MAIL_USER='${{ secrets.MAIL_USER }}' \  # Mail user
             -e NODE_ENV='production' \  # Set the environment
-            -e PORT=8000 \  # Set the port
+            -e PORT='${{ secrets.PORT }}' \  # Set the port
             harshkandera/biddrive:latest  # Ensure no trailing backslash
