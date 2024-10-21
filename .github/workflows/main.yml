@@ -35,8 +35,7 @@ jobs:
         run: |
           docker run -d --name nodejs-app-container \
             -p 8000:8000 \  # Map port 8000
-            -e MONGO_PASSWORD='${{ secrets.MONGO_PASSWORD }}' \  # MongoDB password
-            -e MONGO_URI='${{ secrets.MONGO_URI }}' \  # MongoDB URI
+            -e MONOGODB_URL='${{ secrets.MONOGODB_URL }}' \  # MongoDB URI
             -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \  # JWT secret
             -e CLOUD_NAME='${{ secrets.CLOUD_NAME }}' \  # Cloud service name
             -e API_KEY='${{ secrets.API_KEY }}' \  # API key
