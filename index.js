@@ -15,7 +15,16 @@ const corsOptions = {
   credentials: true, // Allow credentials (if needed)
 };
 
+// const corsOptions = {
+//   origin: 'http://localhost:3000',
+//   methods: ['GET', 'POST'], // Specify the allowed methods
+//   credentials: true,
+// };
+
+
+
 app.use(cors(corsOptions));
+
 
 const dbconnection = require("./config/database")
 const router = require("./routes/router")

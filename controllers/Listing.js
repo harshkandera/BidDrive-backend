@@ -338,12 +338,14 @@ exports.FilterListings = async (req, res, next) => {
       kms_driven,
       bodyType,
       page = 1,
-      limit = 10,
+      limit = 32,
     } = req.body;
+
+    
 
     const match = {};
 
-    // console.log(req.body);
+    console.log(req.body);
 
     // Keyword filtering
     if (keyword) {
@@ -434,12 +436,18 @@ exports.FilterListings = async (req, res, next) => {
 
     // Make filtering
     if (make) {
-      match["vehicleFeatures.vehicleInformation.make"] = make;
+      match["vehicleFeatures.vehicleInformation.make"] = {
+        $regex: make,
+        $options: "i", // Case insensitive
+      };
     }
 
-    // Model filtering
+    // Model filtering (case insensitive)
     if (model) {
-      match["vehicleFeatures.vehicleInformation.model"] = model;
+      match["vehicleFeatures.vehicleInformation.model"] = {
+        $regex: model,
+        $options: "i", // Case insensitive
+      };
     }
 
     // Price range filtering
@@ -458,10 +466,14 @@ exports.FilterListings = async (req, res, next) => {
       };
     }
 
-    // Body Type filtering
+    // Body Type filtering (case insensitive)
     if (bodyType) {
-      match["vehicleFeatures.vehicleInformation.body_type"] = bodyType;
+      match["vehicleFeatures.vehicleInformation.body_type"] = {
+        $regex: bodyType,
+        $options: "i", // Case insensitive
+      };
     }
+
 
     console.log(
       "Complete filter match object:",
@@ -533,10 +545,13 @@ exports.FilterListings = async (req, res, next) => {
   }
 };
 
+
+
+
 exports.GetAuctionsByStatus = async (req, res, next) => {
   try {
     const { status } = req.params;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1 , limit } = req.query;
     const now = new Date();
     let query = {
       status: { $ne: "draft" }, // Exclude cars with status 'draft'

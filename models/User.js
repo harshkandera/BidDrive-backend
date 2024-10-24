@@ -23,9 +23,11 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
     },
-    location: {  
+    location: {
       type: String,
-      required: true,
+    },
+    country: {
+      type: String,
     },
     companyName: {
       type: String,
@@ -63,6 +65,10 @@ const userSchema = new mongoose.Schema(
         },
       },
     ],
+    isProfileCompleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

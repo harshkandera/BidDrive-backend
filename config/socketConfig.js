@@ -19,6 +19,15 @@ const init = (server) => {
     },
   });
 
+  
+  // io = new Server(server, {
+  //   cors: {
+  //     origin: "http://localhost:3000",
+  //     methods: ["GET", "POST"],
+  //     credentials: true,
+  //   },
+  // });
+
   io.use((socket, next) => {
     cookieParser()(socket.request, {}, (err) => {
       if (err) return next(new Error("Error parsing cookies"));

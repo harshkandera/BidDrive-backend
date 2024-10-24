@@ -7,18 +7,22 @@ require("dotenv").config();
 // auth
 
 exports.auth = async (req, res, next) => {
+  
   try {
+
     const token =
       req.cookies?.token ||
       req.body?.token ||
       req.header("authorization")?.split(" ")[1];
 
+      
     if (!token) {
       return res.status(401).json({
         success: false,
         message: "Token not found",
       });
     }
+
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 

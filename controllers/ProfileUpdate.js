@@ -28,10 +28,10 @@ async function uploadFileToCloudinary(file, folder) {
 // Controller function to update the user profile
 exports.ProfileUpdate = async (req, res, next) => {
     try {
-        const { email, username, phone , location , companyName } = req.body;
+        const { email, username, phone , country , companyName } = req.body;
         const supportedTypes = ["jpg", "jpeg", "png"];
 
-        if (!email || !username || !phone || !location ) {
+        if (!email || !username || !phone || !country ) {
             return res.status(400).json({
                 success: false,
                 message: "All fields are required"
@@ -73,10 +73,14 @@ exports.ProfileUpdate = async (req, res, next) => {
         }
 
         // Update user information
+
         user.username = username;
         user.phone = phone;
-        user.location = location;
+        user.country = country;
         user.companyName = companyName;
+
+        user.isProfileCompleted= true;
+
         const updatedProfile = await user.save();
 
         return res.status(200).json({
@@ -86,8 +90,8 @@ exports.ProfileUpdate = async (req, res, next) => {
                 image: updatedProfile.image,
                 username: updatedProfile.username,
                 phone: updatedProfile.phone,
-                location: updatedProfile.location,
-                companyName: updatedProfile.companyName
+                country: updatedProfile.country,
+                companyName: updatedProfile.companyName,
             }
         });
 
@@ -142,6 +146,7 @@ exports.Getuser = async (req, res, next) => {
           phone: user.phone,
           image: user.image,
           email: user.email,
+          country:user.country,
           cart: user.cart,
           biddingHistory: user.biddingHistory,
         },
