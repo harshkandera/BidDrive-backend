@@ -498,7 +498,7 @@ exports.FilterListings = async (req, res, next) => {
       {
         $match: {
           ...match,
-          status: { $ne: "draft" }, // Exclude cars with status "draft"
+          status: { $nin: ["draft", "past"] }, // Exclude cars with status 'draft' and 'past'
         },
       },
       {
@@ -511,6 +511,7 @@ exports.FilterListings = async (req, res, next) => {
           startTime: 1,
           endTime: 1,
           status: 1,
+          price:1
         },
       },
       {
@@ -530,7 +531,7 @@ exports.FilterListings = async (req, res, next) => {
     const totalItems =
       cars[0].totalCount.length > 0 ? cars[0].totalCount[0].count : 0;
 
-    const total = await Car.countDocuments({ status: { $ne: "draft" } });
+    const total = await Car.countDocuments({ status: { $nin: ["draft", "past"] } });
 
     res.json({
       cars: cars[0].paginatedResults,
@@ -550,7 +551,7 @@ exports.FilterListings = async (req, res, next) => {
 
 exports.GetAuctionsByStatus = async (req, res, next) => {
   try {
-    const { status } = req.params;
+    const { status="live" } = req.params;
     const { page = 1 , limit } = req.query;
     const now = new Date();
     let query = {
@@ -594,7 +595,7 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
       .limit(Number(limit));
 
     const total = await Car.countDocuments(query);
-    const totalCars = await Car.countDocuments({ status: { $ne: "draft" } });
+    const totalCars = await Car.countDocuments({ status: { $nin: ["draft", "past"] } });
 
     return res.status(200).json({
       total,
@@ -897,6 +898,7 @@ exports.deleteBid = async (req, res) => {
         );
 
 
+
         if (!updatedBid) {
           await session.abortTransaction();
           return res.status(404).json({ message: "Bid not found" });
@@ -909,6 +911,8 @@ exports.deleteBid = async (req, res) => {
 
         car.highestBid = null;
         car.highestBidder = null; 
+        car.totalBids = car.totalBids -1 ;
+
         await car.save({ session });
 
         
@@ -934,6 +938,8 @@ exports.deleteBid = async (req, res) => {
           bid.status = 'active';
           await bid.save({ session });
         }
+
+        car.totalBids = car.totalBids -1 ;
 
         if (secondBidRecord) {
           secondBidRecord.status = "winner";
