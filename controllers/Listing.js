@@ -341,8 +341,6 @@ exports.FilterListings = async (req, res, next) => {
       limit = 32,
     } = req.body;
 
-    
-
     const match = {};
 
     console.log(req.body);
@@ -474,7 +472,6 @@ exports.FilterListings = async (req, res, next) => {
       };
     }
 
-
     console.log(
       "Complete filter match object:",
       JSON.stringify(match, null, 2)
@@ -511,7 +508,7 @@ exports.FilterListings = async (req, res, next) => {
           startTime: 1,
           endTime: 1,
           status: 1,
-          price:1
+          price: 1,
         },
       },
       {
@@ -531,7 +528,9 @@ exports.FilterListings = async (req, res, next) => {
     const totalItems =
       cars[0].totalCount.length > 0 ? cars[0].totalCount[0].count : 0;
 
-    const total = await Car.countDocuments({ status: { $nin: ["draft", "past"] } });
+    const total = await Car.countDocuments({
+      status: { $nin: ["draft", "past"] },
+    });
 
     res.json({
       cars: cars[0].paginatedResults,
@@ -546,22 +545,19 @@ exports.FilterListings = async (req, res, next) => {
   }
 };
 
-
-
-
 exports.GetAuctionsByStatus = async (req, res, next) => {
   try {
-    const { status="live" } = req.params;
-    const { page = 1 , limit } = req.query;
+    const { status = "live" } = req.params;
+    const { page = 1, limit } = req.query;
     const now = new Date();
     let query = {
-      status: { $ne: "draft" }, // Exclude cars with status 'draft'
+      status: { $ne: "draft" },
     };
 
     // Filter by auction status
     if (status === "live") {
       query = {
-        ...query, // Keep the exclusion of 'draft' status
+        ...query,
         status: "live",
         startTime: { $lte: now },
         endTime: { $gte: now },
@@ -577,25 +573,115 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
         ...query,
         startTime: { $gt: now },
       };
-    } else if (status !== "all") {
-      return res.status(400).json({ message: "Invalid auction status" });
     }
 
-    // Find auctions with pagination
-    const auctions = await Car.find(
-      query,
-      "name description images price startTime endTime highestBid totalBids status created_at vehicleFeatures"
-    )
-      .populate("highestBidder", "username email image phone")
-      .populate(
-        "vehicleFeatures",
-        "vehicleInformation.registration_year vehicleInformation.make vehicleInformation.model"
-      )
-      .skip((page - 1) * limit)
-      .limit(Number(limit));
+    let auctions;
+    let total;
 
-    const total = await Car.countDocuments(query);
-    const totalCars = await Car.countDocuments({ status: { $nin: ["draft", "past"] } });
+    if (status === "active") {
+
+      const result = await Car.aggregate([
+        { $match: query }, // Use the constructed query
+        {
+          $lookup: {
+            from: "bids",
+            localField: "_id",
+            foreignField: "car_id",
+            as: "bids",
+          },
+        },
+        { $match: { "bids.0": { $exists: true } } }, // Ensure there is at least one bid
+        {
+          $lookup: {
+            from: "users",
+            localField: "highestBidder",
+            foreignField: "_id",
+            as: "highestBidderDetails",
+          },
+        },
+        {
+          $lookup: {
+            from: "features",
+            localField: "vehicleFeatures", // Ensure this is the correct field reference
+            foreignField: "_id",
+            as: "vehicleFeaturesDetails",
+          },
+        },
+        {
+          $facet: {
+            auctions: [
+              {
+                $project: {
+                  name: 1,
+                  description: 1,
+                  images: 1,
+                  price: 1,
+                  startTime: 1,
+                  endTime: 1,
+                  highestBid: 1,
+                  totalBids: { $size: "$bids" }, // Total bids count
+                  status: 1,
+                  created_at: 1,
+                  vehicleFeatures: {
+                    vehicleInformation: {
+                      registration_year: { $arrayElemAt: ["$vehicleFeaturesDetails.vehicleInformation.registration_year", 0] },
+                      make: { $arrayElemAt: ["$vehicleFeaturesDetails.vehicleInformation.make", 0] },
+                      model: { $arrayElemAt: ["$vehicleFeaturesDetails.vehicleInformation.model", 0] },
+                    },
+                  },
+                    highestBidder: {
+                    $cond: {
+                      if: { $gt: [{ $size: "$highestBidderDetails" }, 0] },
+                      then: {
+                        username: { $arrayElemAt: ["$highestBidderDetails.username", 0] },
+                        email: { $arrayElemAt: ["$highestBidderDetails.email", 0] },
+                        image: { $arrayElemAt: ["$highestBidderDetails.image", 0] },
+                        phone: { $arrayElemAt: ["$highestBidderDetails.phone", 0] },
+                      },
+                      else: null, // Return null if no highest bidder found
+                    } 
+                  }
+                },
+              },
+              { $skip: (page - 1) * limit },
+              { $limit: Number(limit) },
+            ],
+            totalCount: [
+              { $count: "count" }, // Count total documents matching the query
+            ],
+          },
+        },
+      ]);
+
+      auctions = result[0]?.auctions || [];
+      total = result[0]?.totalCount[0]?.count || 0;
+
+    } else {
+
+      auctions = await Car.find(
+        query,
+        "name description images price startTime endTime highestBid totalBids status created_at vehicleFeatures"
+      )
+        .populate("highestBidder", "username email image phone")
+        .populate(
+          "vehicleFeatures",
+          "vehicleInformation.registration_year vehicleInformation.make vehicleInformation.model"
+        )
+        .skip((page - 1) * limit)
+        .limit(Number(limit));
+
+      total = await Car.countDocuments(query);
+
+    }
+
+    const totalCars = await Car.countDocuments({
+      status: { $nin: ["draft", "past"] },
+    });
+    
+
+    const totalAuctions = await Car.countDocuments({
+      status: { $ne: "draft" },
+    });
 
     return res.status(200).json({
       total,
@@ -604,12 +690,15 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
       limit: Number(limit),
       pages: Math.ceil(total / limit),
       auctions,
+      totalAuctions,
     });
   } catch (error) {
     console.error("Error fetching auctions:", error);
     next(error);
   }
 };
+
+
 
 exports.GetAuctionsDetailsById = async (req, res, next) => {
   try {
@@ -867,6 +956,7 @@ exports.deleteBid = async (req, res) => {
     const { bidAmount } = req.body;
 
     const bid = await Bid.findById(bidId).session(session);
+
     if (!bid) {
       await session.abortTransaction();
       return res.status(404).json({ message: "Bid not found" });
@@ -874,6 +964,7 @@ exports.deleteBid = async (req, res) => {
 
     const carId = bid.car_id._id;
     const car = await Car.findById(carId).session(session);
+
     if (!car) {
       await session.abortTransaction();
       return res.status(404).json({ message: "Car not found" });
@@ -882,70 +973,64 @@ exports.deleteBid = async (req, res) => {
     const isTimeExpired = Date.now() > new Date(car.endTime);
 
     if (String(car.highestBidder) === String(bid.user_id)) {
-      
       const sortedBids = await getAuctionHistory(carId);
+
       if (!sortedBids || sortedBids.length === 0) {
         await session.abortTransaction();
         return res.status(404).json({ message: "No other bids found" });
       }
 
       if (sortedBids.length < 2) {
-
         const updatedBid = await Bid.findByIdAndUpdate(
           bidId,
-          { $pull: { bids: { bidAmount } } },  
+          { $pull: { bids: { bidAmount } } },
           { new: true, session }
         );
-
-
 
         if (!updatedBid) {
           await session.abortTransaction();
           return res.status(404).json({ message: "Bid not found" });
         }
 
-        if(!isTimeExpired){
-          bid.status = 'active';
+        if (!isTimeExpired) {
+          bid.status = "active";
           await bid.save({ session });
         }
 
         car.highestBid = null;
-        car.highestBidder = null; 
-        car.totalBids = car.totalBids -1 ;
+        car.highestBidder = null;
+        car.totalBids = car.totalBids - 1;
 
         await car.save({ session });
 
-        
-
         await session.commitTransaction();
-        return res.status(200).json({ message: "Bid detail removed successfully", updatedBid });
-        
+        return res
+          .status(200)
+          .json({ message: "Bid detail removed successfully", updatedBid });
       } else {
-
         const secondHighestBid = sortedBids[sortedBids.length - 2];
 
         // Update car with new highest bidder and amount
         car.highestBid = secondHighestBid.bidAmount;
         car.highestBidder = secondHighestBid.user[0].id;
 
-        
-
         // Update second highest bid status to "winner"
-        const secondBidRecord = await Bid.findOne({ user_id: secondHighestBid.user[0].id, car_id: carId }).session(session);
+        const secondBidRecord = await Bid.findOne({
+          user_id: secondHighestBid.user[0].id,
+          car_id: carId,
+        }).session(session);
 
-        
-        if(!isTimeExpired){
-          bid.status = 'active';
+        if (!isTimeExpired) {
+          bid.status = "active";
           await bid.save({ session });
         }
-
-        car.totalBids = car.totalBids -1 ;
 
         if (secondBidRecord) {
           secondBidRecord.status = "winner";
           await secondBidRecord.save({ session });
         }
 
+        car.totalBids = car.totalBids - 1;
         await car.save({ session });
       }
     }
@@ -953,7 +1038,7 @@ exports.deleteBid = async (req, res) => {
     // Remove the bid from the bids array
     const updatedBid = await Bid.findByIdAndUpdate(
       bidId,
-      { $pull: { bids: { bidAmount } } },  
+      { $pull: { bids: { bidAmount } } },
       { new: true, session }
     );
 
@@ -963,16 +1048,18 @@ exports.deleteBid = async (req, res) => {
     }
 
     await session.commitTransaction();
-    return res.status(200).json({ message: "Bid detail removed successfully", updatedBid });
-
+    return res
+      .status(200)
+      .json({ message: "Bid detail removed successfully", updatedBid });
   } catch (error) {
     await session.abortTransaction();
-    return res.status(500).json({ message: "Error removing bid detail", error });
+    return res
+      .status(500)
+      .json({ message: "Error removing bid detail", error });
   } finally {
     session.endSession(); // Ensure session is ended
   }
 };
-
 
 // "SortedBids": [
 //   {

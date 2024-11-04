@@ -3,6 +3,7 @@ const ErrorHandler = require("../utils/error");
 const cloudinary = require('cloudinary').v2;
 const path = require('path');
 const bcrypt = require("bcrypt")
+const axios = require('axios');
 
 // Function to check if the file type is supported
 function isFileSupported(type, supportedTypes) {
@@ -257,6 +258,41 @@ exports.ChangePassword = async (req, res, next) => {
         message: "Password updated successfully",
       });
   
+    } catch (error) {
+      next(error);
+    }
+  };
+  
+
+  
+  
+  
+  exports.Translator = async (req, res, next) => {
+    try {
+      const { text, toLanguage } = req.body;
+      
+      if (!text || !toLanguage) {
+        return res.status(400).json({ error: 'Text and target language are required.' });
+      }
+  
+      const endpoint = 'https://api.cognitive.microsofttranslator.com/translate';
+      const subscriptionKey = process.env.TRANSLATOR_KEY;
+      const region = process.env.TRANSLATOR_REGION;
+  
+      const response = await axios.post(
+        `${endpoint}?api-version=3.0&to=${toLanguage}`,
+        [{ Text: text }],
+        {
+          headers: {
+            'Ocp-Apim-Subscription-Key': subscriptionKey,
+            'Ocp-Apim-Subscription-Region': region,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+  
+      return res.json({ translatedText: response.data[0].translations[0].text });
+    
     } catch (error) {
       next(error);
     }
