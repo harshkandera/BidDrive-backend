@@ -1,13 +1,12 @@
-const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser');
+const { Server } = require("socket.io");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 
 let io;
 
 const init = (server) => {
-  
   if (io) {
-    console.log('Socket.io already initialized');
+    console.log("Socket.io already initialized");
     return io;
   }
 
@@ -19,7 +18,6 @@ const init = (server) => {
     },
   });
 
-  
   // io = new Server(server, {
   //   cors: {
   //     origin: "http://localhost:3000",
@@ -28,78 +26,125 @@ const init = (server) => {
   //   },
   // });
 
+  // io.use((socket, next) => {
+
+  //   cookieParser()(socket.request, {}, (err) => {
+
+  //     if (err) return next(new Error("Error parsing cookies"));
+
+  //     const token = socket.handshake.auth.token || socket.request.cookies.token;
+
+  //     if (!token) {
+  //       return next(new Error("Authentication error: Token not provided"));
+  //     }
+
+  //     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+
+  //       if (err) {
+  //         return next(new Error("Authentication error: Invalid token"));
+  //       }
+
+  //       socket.user = decoded;
+  //       next();
+
+  //     });
+  //   });
+
+  // });
+
   io.use((socket, next) => {
+
     cookieParser()(socket.request, {}, (err) => {
+
       if (err) return next(new Error("Error parsing cookies"));
 
       const token = socket.handshake.auth.token || socket.request.cookies.token;
 
-      // console.log(token)
-
-      if (!token) {
-        return next(new Error("Authentication error: Token not provided"));
+      if (token) {
+        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+          if (!err) {
+            socket.user = decoded;
+          }
+          next();
+        });
+      } else {
+        next();
       }
 
-      jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) {
-          return next(new Error("Authentication error: Invalid token"));
-        }
-
-        socket.user = decoded;
-        next();
-      });
     });
+
+  });
+  
+
+  io.on("connection", (socket) => {
+
+    console.log("New User Connected:", socket.id);
+
+
+    socket.on("joinCarRoom", async (carId) => {
+
+      if (!socket.user) {
+        return;
+      }
+
+      socket.join(`car_${carId}`);
+
+      console.log(`User ${socket.user.email} joined room for car_${carId}`);
+
+    });
+
+    socket.on("newHighestBid", async (data) => {
+
+
+      const { title, carId, bidAmount, image } = data;
+
+      try {
+        io.emit("updateHighestBid", {
+          carId,
+          bidAmount,
+        });
+      } catch (err) {
+        console.error("Error broadcasting UI update:", err);
+      }
+
+
+      if (!socket.user) {
+        return;
+      }
+
+      console.log(data);
+
+
+      try {
+
+        io.emit("bidUpdated", { carId, bidAmount });
+
+        socket.to(`car_${carId}`).emit("notify", {
+          
+          title: title,
+          body: bidAmount,
+          carId,
+          bidAmount,
+          image,
+        });
+
+        console.log(`Real-time update sent to room car_${carId}`);
+
+      } catch (err) {
+        console.error("Error updating notifications:", err);
+      }
+    });
+
+ 
+
+    socket.on("disconnect", () => {
+      console.log("User Disconnected:", socket.id);
+    });
+
+
   });
 
-    io.on("connection", (socket) => {
-
-      console.log("New User Connected:", socket.id);
-
-      console.log("Authenticated User:", socket.user);
-
-    
-
-      socket.on("joinCarRoom", async (carId) => {
-        
-        socket.join(`car_${carId}`);
-
-        console.log(`User ${socket.user.email} joined room for car_${carId}`);
-
-      });
-
-      socket.on("newHighestBid", async (data) => {
-
-        console.log(data)
-
-        const { title , carId,bidAmount,image } = data;
-
-
-        try {
-
-          io.emit('bidUpdated', { carId , bidAmount });
-
-          socket.to(`car_${carId}`).emit("notify", {
-            title:title,
-            body:bidAmount,
-            carId,
-            bidAmount,
-            image
-          });
-
-          console.log(`Real-time update sent to room car_${carId}`);
-
-        } catch (err) {
-          console.error("Error updating notifications:", err);
-        }
-      });
-
-      socket.on("disconnect", () => {
-        console.log("User Disconnected:", socket.id);
-      });
-
-    });
-
-    return io;
+  return io;
 };
 
 module.exports = {

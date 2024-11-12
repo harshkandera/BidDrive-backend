@@ -223,12 +223,18 @@ exports.withdrawalBidding = async (req, res, next) => {
 
 exports.GetAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find(
+
+    const allusers = await User.find(
       {},
       "username phone email image accountType biddingHistory _id"
     );
 
+    const users = allusers.reverse();
+
+
+
     const usersWithBids = await Promise.all(
+
       users.map(async (user) => {
         const activeBids = await Bid.find({
           user_id: user._id,
@@ -275,6 +281,7 @@ exports.GetAllUsers = async (req, res, next) => {
 
 
 exports.DeleteUsers = async (req, res, next) => {
+  
   const { userIds } = req.body;
   console.log(userIds);
 
@@ -428,7 +435,7 @@ exports.getAdminDashboardData = async (req, res, next) => {
         highestBid: { $exists: true, $ne: null }, 
     })
     .sort({ updatedAt: -1 }) 
-    .limit(5) 
+    .limit(10) 
     .select({
       name: 1,         
       highestBid: 1,    
@@ -447,7 +454,7 @@ exports.getAdminDashboardData = async (req, res, next) => {
       accountType: { $ne: "Admin" },
     })
       .sort({ createdAt: -1 })
-      .limit(5)
+      .limit(10)
       .select("name email username image createdAt")
       .lean();
 
@@ -491,7 +498,7 @@ exports.getAdminDashboardData = async (req, res, next) => {
       highestBid: { $exists: true, $ne: null }, 
     })
     .sort({ endTime: -1 }) 
-    .limit(5) 
+    .limit(15) 
     .select({
       name: 1,         
       highestBid: 1,    

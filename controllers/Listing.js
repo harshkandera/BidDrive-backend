@@ -10,6 +10,8 @@ function isFileSupported(type, supportedTypes) {
   return supportedTypes.includes(type);
 }
 
+
+
 async function uploadFileToCloudinary(file, folder) {
   const options = {
     folder: folder,
@@ -17,19 +19,19 @@ async function uploadFileToCloudinary(file, folder) {
     resource_type: "image",
     transformation: [
       {
-        width: 800,
+        width: 1000,
         height: 800,
         crop: "fill",
         gravity: "auto",
-      },
-      {
+        quality: "auto:best",
         fetch_format: "auto",
-        quality: "auto",
+        dpr: "auto",
       },
     ],
   };
   return await cloudinary.uploader.upload(file.tempFilePath, options);
 }
+
 
 const updateCarListing = async (id, updateFields, step, res, message) => {
   const updatedCarListing = await Car.findByIdAndUpdate(
@@ -948,6 +950,7 @@ exports.getInvoices = async (req, res) => {
 };
 
 exports.deleteBid = async (req, res) => {
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -973,6 +976,7 @@ exports.deleteBid = async (req, res) => {
     const isTimeExpired = Date.now() > new Date(car.endTime);
 
     if (String(car.highestBidder) === String(bid.user_id)) {
+
       const sortedBids = await getAuctionHistory(carId);
 
       if (!sortedBids || sortedBids.length === 0) {
@@ -1013,6 +1017,7 @@ exports.deleteBid = async (req, res) => {
         // Update car with new highest bidder and amount
         car.highestBid = secondHighestBid.bidAmount;
         car.highestBidder = secondHighestBid.user[0].id;
+        car.totalBids = car.totalBids - 1;
 
         // Update second highest bid status to "winner"
         const secondBidRecord = await Bid.findOne({
@@ -1030,7 +1035,6 @@ exports.deleteBid = async (req, res) => {
           await secondBidRecord.save({ session });
         }
 
-        car.totalBids = car.totalBids - 1;
         await car.save({ session });
       }
     }
