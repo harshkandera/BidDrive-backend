@@ -6,20 +6,18 @@ const Bid = require("../models/Bid");
 const User = require("../models/User");
 const { updateHighestBid } = require("../services/firebaseService");
 const mongoose = require("mongoose");
-const {notifyUsers} = require('./Notification')
+const { notifyUsers } = require("./Notification");
 
 exports.CreateBidding = async (req, res, next) => {
   const session = await mongoose.startSession();
 
   try {
-
     const { bidAmount } = req.body;
     const { carId: car_id, userId: user_id } = req.params;
 
     if (!car_id || !user_id || !bidAmount) {
       return next(new ErrorHandler("All fields are required", 400));
     }
-
 
     if (
       !mongoose.isValidObjectId(car_id) ||
@@ -32,6 +30,18 @@ exports.CreateBidding = async (req, res, next) => {
 
     const car = await Car.findById(car_id).session(session);
     const user = await User.findById(user_id).session(session);
+
+    const isProfileCompleted = user?.isProfileCompleted;
+
+    if (!isProfileCompleted) {
+      return res.status(200).json({
+        success: true,
+        message: "Profile is not completed.",
+        data: {
+          isProfileCompleted,
+        }
+      });
+    }
 
     if (car.status === "draft" || car.status === "past") {
       return next(new ErrorHandler("Car is not live", 400));
@@ -67,7 +77,6 @@ exports.CreateBidding = async (req, res, next) => {
       );
     }
 
-
     // Bid validation: Minimum required bid
     const minRequiredBid = car.highestBid
       ? Number(car.highestBid) + Number(car.minimumBidDifference)
@@ -93,7 +102,6 @@ exports.CreateBidding = async (req, res, next) => {
     // console.log(activeBidForThisCar);
 
     if (activeBidForThisCar) {
-
       activeBidForThisCar.bids.push({
         bidAmount,
         bid_time: new Date(),
@@ -120,7 +128,7 @@ exports.CreateBidding = async (req, res, next) => {
         activeBidForThisCar.save({ session }),
       ]);
 
-      await notifyUsers(car_id , bidAmount, user_id , car.images[0] );
+      await notifyUsers(car_id, bidAmount, user_id, car.images[0]);
 
       console.log(activeBidForThisCar);
 
@@ -173,8 +181,7 @@ exports.CreateBidding = async (req, res, next) => {
     await Promise.all([car.save({ session }), user.save({ session })]);
 
     // Notify users
-    await notifyUsers( car.name , car_id , bidAmount , user_id , car.images[0] );
-
+    await notifyUsers(car.name, car_id, bidAmount, user_id, car.images[0]);
 
     // Commit transaction
     await session.commitTransaction();
@@ -183,34 +190,15 @@ exports.CreateBidding = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       message: "Bid placed successfully",
-      data: { bid: newBid[0] }, // Return the correct new bid
+      data: { bid: newBid[0] ,isProfileCompleted },
     });
   } catch (err) {
-    console.log(err)
+    console.log(err);
     await session.abortTransaction();
     session.endSession();
     next(err);
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // end the auction
 const cron = require("node-cron");
@@ -238,7 +226,7 @@ const endAuctionsInBulk = async (auctions) => {
 
   try {
     const auctionIds = auctions.map((auction) => auction._id);
-    
+
     await Car.updateMany(
       { _id: { $in: auctionIds } },
       { $set: { status: "past" } },
@@ -246,7 +234,6 @@ const endAuctionsInBulk = async (auctions) => {
     );
 
     for (const auction of auctions) {
-      
       const { _id: carId, highestBidder } = auction;
 
       if (highestBidder) {
@@ -285,8 +272,6 @@ const endAuctionsInBulk = async (auctions) => {
   }
 };
 
-
-
 // cron.schedule("*/5 * * * *", async () => {
 //   try {
 //     const auctions = await Car.find({
@@ -301,11 +286,6 @@ const endAuctionsInBulk = async (auctions) => {
 //     console.error("Error during auction check:", err);
 //   }
 // });
-
-
-
-
-
 
 // const endAuctionsInBulk = async (auctions) => {
 //   const session = await mongoose.startSession();
@@ -338,14 +318,6 @@ const endAuctionsInBulk = async (auctions) => {
 //     console.error("Error ending auctions and updating bid statuses:", err);
 //   }
 // };
-
-
-
-
-
-
-
-
 
 // const endAuction = async (auctionId) => {
 //   try{

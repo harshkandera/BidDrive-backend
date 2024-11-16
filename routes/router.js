@@ -1,12 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const {auth,isUser,isAdmin, } = require("../middlewares/auth")
-const {SendOTP , Signup, login ,RegisterToken}=require("../controllers/Auth")
+const {SendOTP , Signup, login ,RegisterToken,isProfileCompleted}=require("../controllers/Auth")
 const {ProfileUpdate, Getuser ,ChangePassword} = require ("../controllers/ProfileUpdate")
 const  {SaveForLater,UserBidsForCar,withdrawalBidding,getDashboardData} = require("../controllers/UserAuction")
 const {CreateBidding} = require("../controllers/NewAuctionCar")
 const {FilterListings,createMetadata, getMetadata} =require('../controllers/Listing')
 const {GetUserNotifications,MarkNotificationAsRead,DeleteNotification}=require('../controllers/Notification')
+
 // const {NewAssignment} = require('../controllers/NewAuctionCar')
 // const {NewAssessment,Getsubmission,GetselfAssessment,PeerAssessment,PeerSubmission,TeacherSubmission,FinalSubmission,FinalTask} = require("../controllers/Submission")
 
@@ -31,6 +32,8 @@ router.get('/get_users_detail/:userId',auth,Getuser)
 router.get('/get_user_dashboard/:userId', auth ,isUser,getDashboardData)
 
 router.post("/metadata",auth,isAdmin,createMetadata);
+
+// router.post("/isProfileCompleted",isProfileCompleted);
 
 router.get("/metadata",getMetadata);
 

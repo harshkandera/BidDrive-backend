@@ -74,7 +74,6 @@ const init = (server) => {
     });
 
   });
-  
 
   io.on("connection", (socket) => {
 

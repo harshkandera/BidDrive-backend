@@ -10,11 +10,25 @@ const ErrorHandler = require("../utils/error");
 exports.SendOTP = async (req, res) => {
   try {
     // fetch email
-    const { email: lowerCaseEmail } = req.body;
+    const { email: lowerCaseEmail, password, confirmPassword } = req.body;
+
+    if (!lowerCaseEmail || !password || !confirmPassword) {
+      return res.status(403).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(403).json({
+        success: false,
+        message: "passowrd and confirm password should be same",
+      });
+    }
 
     const email = lowerCaseEmail.toLowerCase();
 
-    console.log(req.body);
+    // console.log(req.body);
 
     // validate email
     const checkUserPresent = await User.findOne({ email });
@@ -25,6 +39,7 @@ exports.SendOTP = async (req, res) => {
         message: "Email already exits",
       });
     }
+
     // generate otp
     var otp = OtpGenenrator.generate(6, {
       upperCaseAlphabets: false,
@@ -43,16 +58,20 @@ exports.SendOTP = async (req, res) => {
         lowerCaseAlphabets: false,
         specialChars: false,
       });
-
       const result = await OTP.findOne({ otp: otp });
     }
 
-    const otpPayload = { email, otp };
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // console.log("hashed password:", hashedPassword);
+
+    const otpPayload = { email, otp, password: hashedPassword };
 
     // create an entry in db
+
     const otpbody = await OTP.create(otpPayload);
 
-    console.log(otpbody);
+    console.log("otp body:",otpbody);
 
     // return res succuessful
     res.status(200).json({
@@ -73,30 +92,25 @@ exports.SendOTP = async (req, res) => {
 exports.Signup = async (req, res) => {
   try {
     //data fetch req body
-    const { email: lowerCaseEmail, password, confirmPassword, otp } = req.body;
 
-    const email = lowerCaseEmail.toLowerCase();
+    const { email: lowerCaseEmail, otp } = req.body;
 
-    console.log(req.body);
+
+    // console.log("here the body",req.body);
 
     // validate
-    if (!email || !password || !confirmPassword || !otp) {
+    if (!lowerCaseEmail || !otp) {
       return res.status(403).json({
         success: false,
         message: "all fields are required",
       });
     }
 
-    // password match confirm
-    if (password !== confirmPassword) {
-      return res.status(403).json({
-        success: false,
-        message: "passowrd and confirm password should be same",
-      });
-    }
+    const email = lowerCaseEmail.toLowerCase();
 
     // check user already exist or not
     const existuser = await User.findOne({ email });
+
     if (existuser) {
       return res.status(403).json({
         success: false,
@@ -110,7 +124,7 @@ exports.Signup = async (req, res) => {
     const recentotp =
       (await OTP.findOne({ email }).sort({ createdAt: -1 }).limit(1)) || [];
 
-    console.log("recentotp", recentotp);
+    // console.log("recentotp", recentotp);
 
     if (recentotp.length === 0) {
       return res.status(403).json({
@@ -124,13 +138,16 @@ exports.Signup = async (req, res) => {
       });
     }
 
+    const password = recentotp.password;
+
     // hash pass
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // const hashedPassword = await bcrypt.hash(password, 10);
 
     // create user entry
     const user = await User.create({
       email,
-      password: hashedPassword,
+      password,
+      isProfileCompleted: false,
     });
 
     return res.status(200).json({
@@ -205,7 +222,12 @@ exports.login = async (req, res, next) => {
         isProfileCompleted: user.isProfileCompleted,
         token: user.token,
         isSubscribedToNotifications: user.isSubscribedToNotifications,
-        companyName:user.companyName
+        companyName: user.companyName,
+        street: user.street,
+        city: user.city,
+        state: user.state,
+        pincode: user.pincode,
+        country: user.country,
       };
 
       return res.status(200).json({
@@ -272,3 +294,51 @@ exports.RegisterToken = async (req, res, next) => {
     });
   }
 };
+
+// exports.isProfileCompleted = async (req, res) => {
+//   try {
+//     // Fetch all users - be careful with large datasets, consider pagination or filtering if needed
+//     const users = await User.find({});
+    
+//     // Iterate over each user
+//     for (let i = 0; i < users.length; i++) {
+//       const user = users[i];
+      
+//       // Check if any required field is missing
+//       if (
+//         !user.username ||
+//         !user.phone ||
+//         !user.street ||
+//         !user.city ||
+//         !user.state ||
+//         !user.pincode ||
+//         !user.country
+//       ) {
+//         // Mark user as having incomplete profile
+//         user.isProfileCompleted = false;
+        
+//         // Save the user record
+//         await user.save();
+//       } else {
+//         // If profile is complete, set isProfileCompleted to true
+//         if (user.isProfileCompleted !== true) {
+//           user.isProfileCompleted = true;
+//           await user.save();
+//         }
+//       }
+//     }
+    
+//     // Respond with success
+//     return res.status(200).json({
+//       success: true,
+//       message: "Profile completion check completed successfully.",
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "An error occurred while checking profiles.",
+//     });
+//   }
+// };

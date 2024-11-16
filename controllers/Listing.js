@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const Bid = require("../models/Bid");
 const Meta = require("../models/MetaData");
 const User = require("../models/User");
+
 function isFileSupported(type, supportedTypes) {
   return supportedTypes.includes(type);
 }
