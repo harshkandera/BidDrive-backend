@@ -228,6 +228,8 @@ exports.login = async (req, res, next) => {
         state: user.state,
         pincode: user.pincode,
         country: user.country,
+        firstname: user.firstname,
+        lastname: user.lastname,
       };
 
       return res.status(200).json({
