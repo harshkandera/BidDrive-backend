@@ -716,7 +716,7 @@ exports.GetAuctionsDetailsById = async (req, res, next) => {
       auctionId,
       "name description images price startTime endTime highestBid totalBids status created_at vehicleFeatures"
     )
-      .populate("highestBidder", "username email image phone")
+      .populate("highestBidder", "username email image phone firstname lastname street city state country pincode companyName")
       .populate("vehicleFeatures", "vehicleInformation")
       .exec();
 
@@ -1012,7 +1012,9 @@ exports.deleteBid = async (req, res) => {
         return res
           .status(200)
           .json({ message: "Bid detail removed successfully", updatedBid });
+
       } else {
+
         const secondHighestBid = sortedBids[sortedBids.length - 2];
 
         // Update car with new highest bidder and amount
@@ -1053,9 +1055,11 @@ exports.deleteBid = async (req, res) => {
     }
 
     await session.commitTransaction();
+    
     return res
       .status(200)
       .json({ message: "Bid detail removed successfully", updatedBid });
+
   } catch (error) {
     await session.abortTransaction();
     return res

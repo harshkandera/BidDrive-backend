@@ -228,6 +228,13 @@ exports.Getuser = async (req, res, next) => {
         country: user.country,
         cart: user.cart,
         biddingHistory: user.biddingHistory,
+        street: user.street,
+        city: user.city,
+        state: user.state,
+        pincode: user.pincode,
+        companyName: user.companyName,
+        firstname: user.firstname,
+        lastname: user.lastname,
       },
     });
   } catch (error) {
