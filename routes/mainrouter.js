@@ -14,11 +14,12 @@ router.post('/delete_listing',auth,isAdmin,deleteCarsByIds)
 router.post('/upload_invoices/:carId/:userId',auth,isAdmin,UploadInvoice);
 router.post('/delete_bid/:bidId',auth,isAdmin,deleteBid);
 
+
 // get routes 
 router.get('/get_draft_listing',GetDraftListing);
 router.get('/get_listing_by_id/:id',GetListingById);
 router.get('/get_all_users',auth,isAdmin,GetAllUsers);
-router.get('/get_acutions/:status',GetAuctionsByStatus)
+router.get('/get_acutions/:status/:category',GetAuctionsByStatus)
 router.get('/get_auctionsbyid/:id',auth,isAdmin,GetAuctionsDetailsById)
 router.get('/admin_dashboard',getAdminDashboardData)
 router.get('/get_invoices/:carId/:userId',auth,isAdmin,getInvoices);

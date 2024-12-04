@@ -11,8 +11,6 @@ function isFileSupported(type, supportedTypes) {
   return supportedTypes.includes(type);
 }
 
-
-
 async function uploadFileToCloudinary(file, folder) {
   const options = {
     folder: folder,
@@ -32,7 +30,6 @@ async function uploadFileToCloudinary(file, folder) {
   };
   return await cloudinary.uploader.upload(file.tempFilePath, options);
 }
-
 
 const updateCarListing = async (id, updateFields, step, res, message) => {
   const updatedCarListing = await Car.findByIdAndUpdate(
@@ -58,8 +55,8 @@ exports.CreateListing = async (req, res, next) => {
     const { step } = req.params;
     const { id } = req.body;
 
-    console.log(req.params);
-    console.log(req.body);
+    // console.log(req.params);
+    // console.log(req.body);
 
     // Handle step 1: Car information
     if (step === "1") {
@@ -70,6 +67,8 @@ exports.CreateListing = async (req, res, next) => {
         startTime,
         endTime,
         minimumBidDifference,
+        category,
+        subcategory,
       } = req.body;
 
       const missingFields = [];
@@ -79,6 +78,11 @@ exports.CreateListing = async (req, res, next) => {
       if (!startTime) missingFields.push("startTime");
       if (!endTime) missingFields.push("endTime");
       if (!minimumBidDifference) missingFields.push("minimumBidDifference");
+      if (!category) missingFields.push("category");
+
+      if (category === "construction" && !subcategory) {
+        missingFields.push("subcategory");
+      }
 
       if (missingFields.length > 0) {
         return next(
@@ -88,6 +92,11 @@ exports.CreateListing = async (req, res, next) => {
           )
         );
       }
+
+      const vehcileCategory = {
+        type: category,
+        subcategory: subcategory,
+      };
 
       if (id) {
         return await updateCarListing(
@@ -99,6 +108,7 @@ exports.CreateListing = async (req, res, next) => {
             startTime,
             endTime,
             minimumBidDifference,
+            category: vehcileCategory,
           },
           1,
           res,
@@ -113,6 +123,7 @@ exports.CreateListing = async (req, res, next) => {
         startTime,
         endTime,
         minimumBidDifference,
+        category: vehcileCategory,
         step1: true,
       });
 
@@ -141,7 +152,6 @@ exports.CreateListing = async (req, res, next) => {
       if (!car) return next(new ErrorHandler("Car not found", 404));
 
       if (car.vehicleFeatures) {
-        // Update existing vehicle features
         car.vehicleFeatures.vehicleInformation = vehicleInformation;
         car.vehicleFeatures.optionsFeature = optionsFeature;
         car.vehicleFeatures.technicalFeature = technicalFeature;
@@ -255,7 +265,21 @@ async function getAuctionHistory(carId) {
 
 exports.GetDraftListing = async (req, res, next) => {
   try {
-    const draftListings = await Car.find();
+    const { category = "cars" } = req.query;
+
+    const allowedCategories = ["cars", "construction"];
+
+    if (!allowedCategories.includes(category)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid category. Allowed values are 'cars' or 'construction'.",
+      });
+    }
+
+    const draftListings = await Car.find({
+      "category.type": category,
+    });
 
     return res.status(200).json({
       success: true,
@@ -291,8 +315,9 @@ exports.GetListingById = async (req, res, next) => {
 exports.ChangeStatus = async (req, res, next) => {
   try {
     const { carIds, status } = req.body;
-    console.log(req.body);
-    // Validate input
+
+    // console.log(req.body);
+
     if (!carIds || !Array.isArray(carIds) || carIds.length === 0 || !status) {
       return next(new ErrorHandler("Select The Listing To Update", 400));
     }
@@ -342,6 +367,7 @@ exports.FilterListings = async (req, res, next) => {
       bodyType,
       page = 1,
       limit = 32,
+      category = "cars",
     } = req.body;
 
     const match = {};
@@ -498,14 +524,15 @@ exports.FilterListings = async (req, res, next) => {
       {
         $match: {
           ...match,
-          status: { $nin: ["draft", "past"] }, // Exclude cars with status 'draft' and 'past'
+          status: { $nin: ["draft", "past"] },
+          category: { type: category },
         },
       },
       {
         $project: {
           name: 1,
           description: 1,
-          images: 1,
+          images: { $slice: ["$images", 1] },
           highestBid: 1,
           totalBids: 1,
           startTime: 1,
@@ -550,11 +577,14 @@ exports.FilterListings = async (req, res, next) => {
 
 exports.GetAuctionsByStatus = async (req, res, next) => {
   try {
-    const { status = "live" } = req.params;
+    const { status = "live", category = "cars" } = req.params;
     const { page = 1, limit } = req.query;
+
     const now = new Date();
+
     let query = {
       status: { $ne: "draft" },
+      category: { type: category },
     };
 
     // Filter by auction status
@@ -582,7 +612,6 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
     let total;
 
     if (status === "active") {
-
       const result = await Car.aggregate([
         { $match: query }, // Use the constructed query
         {
@@ -617,7 +646,7 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
                 $project: {
                   name: 1,
                   description: 1,
-                  images: 1,
+                  images: { $slice: ["$images", 1] },
                   price: 1,
                   startTime: 1,
                   endTime: 1,
@@ -627,23 +656,46 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
                   created_at: 1,
                   vehicleFeatures: {
                     vehicleInformation: {
-                      registration_year: { $arrayElemAt: ["$vehicleFeaturesDetails.vehicleInformation.registration_year", 0] },
-                      make: { $arrayElemAt: ["$vehicleFeaturesDetails.vehicleInformation.make", 0] },
-                      model: { $arrayElemAt: ["$vehicleFeaturesDetails.vehicleInformation.model", 0] },
+                      registration_year: {
+                        $arrayElemAt: [
+                          "$vehicleFeaturesDetails.vehicleInformation.registration_year",
+                          0,
+                        ],
+                      },
+                      make: {
+                        $arrayElemAt: [
+                          "$vehicleFeaturesDetails.vehicleInformation.make",
+                          0,
+                        ],
+                      },
+                      model: {
+                        $arrayElemAt: [
+                          "$vehicleFeaturesDetails.vehicleInformation.model",
+                          0,
+                        ],
+                      },
                     },
                   },
-                    highestBidder: {
+                  highestBidder: {
                     $cond: {
                       if: { $gt: [{ $size: "$highestBidderDetails" }, 0] },
                       then: {
-                        username: { $arrayElemAt: ["$highestBidderDetails.username", 0] },
-                        email: { $arrayElemAt: ["$highestBidderDetails.email", 0] },
-                        image: { $arrayElemAt: ["$highestBidderDetails.image", 0] },
-                        phone: { $arrayElemAt: ["$highestBidderDetails.phone", 0] },
+                        username: {
+                          $arrayElemAt: ["$highestBidderDetails.username", 0],
+                        },
+                        email: {
+                          $arrayElemAt: ["$highestBidderDetails.email", 0],
+                        },
+                        image: {
+                          $arrayElemAt: ["$highestBidderDetails.image", 0],
+                        },
+                        phone: {
+                          $arrayElemAt: ["$highestBidderDetails.phone", 0],
+                        },
                       },
                       else: null, // Return null if no highest bidder found
-                    } 
-                  }
+                    },
+                  },
                 },
               },
               { $skip: (page - 1) * limit },
@@ -658,13 +710,12 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
 
       auctions = result[0]?.auctions || [];
       total = result[0]?.totalCount[0]?.count || 0;
-
     } else {
-
       auctions = await Car.find(
         query,
         "name description images price startTime endTime highestBid totalBids status created_at vehicleFeatures"
       )
+        .select({ images: { $slice: 1 } })
         .populate("highestBidder", "username email image phone")
         .populate(
           "vehicleFeatures",
@@ -674,13 +725,11 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
         .limit(Number(limit));
 
       total = await Car.countDocuments(query);
-
     }
 
     const totalCars = await Car.countDocuments({
       status: { $nin: ["draft", "past"] },
     });
-    
 
     const totalAuctions = await Car.countDocuments({
       status: { $ne: "draft" },
@@ -701,8 +750,6 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
   }
 };
 
-
-
 exports.GetAuctionsDetailsById = async (req, res, next) => {
   try {
     const auctionId = req.params.id;
@@ -716,7 +763,10 @@ exports.GetAuctionsDetailsById = async (req, res, next) => {
       auctionId,
       "name description images price startTime endTime highestBid totalBids status created_at vehicleFeatures"
     )
-      .populate("highestBidder", "username email image phone firstname lastname street city state country pincode companyName")
+      .populate(
+        "highestBidder",
+        "username email image phone firstname lastname street city state country pincode companyName"
+      )
       .populate("vehicleFeatures", "vehicleInformation")
       .exec();
 
@@ -759,26 +809,105 @@ exports.GetAuctionsDetailsById = async (req, res, next) => {
 
 exports.createMetadata = async (req, res) => {
   try {
-    const { MakesModels, BodyColors, BodyTypes } = req.body;
+    const { MakesModels, BodyColors, BodyTypes, ConstructionMakesModels } =
+      req.body;
 
-    const newMeta = new Meta({
-      MakesModels: MakesModels,
-      BodyColors: BodyColors,
-      BodyTypes: BodyTypes,
-    });
+    if (ConstructionMakesModels) {
+      for (const newEntry of ConstructionMakesModels) {
+        const existingType = await Meta.findOne({
+          "ConstructionMakesModels.type": newEntry.type,
+        });
 
-    // Save to database
-    await newMeta.save();
+        if (existingType) {
+          // Update makes and models if type exists
+          await Meta.findOneAndUpdate(
+            { "ConstructionMakesModels.type": newEntry.type },
+            {
+              $addToSet: {
+                "ConstructionMakesModels.$.makes": { $each: newEntry.makes },
+              },
+            }
+          );
+        } else {
+          await Meta.findOneAndUpdate(
+            {},
+            {
+              $push: {
+                ConstructionMakesModels: newEntry,
+              },
+            },
+            { upsert: true }
+          );
+        }
+      }
+    }
+
+    if (MakesModels) {
+      for (const newEntry of MakesModels) {
+        const existingMake = await Meta.findOne({
+          "MakesModels.make": newEntry.make,
+        });
+
+        if (existingMake) {
+          await Meta.findOneAndUpdate(
+            { "MakesModels.make": newEntry.make },
+            {
+              $addToSet: {
+                "MakesModels.$.models": { $each: newEntry.models },
+              },
+            }
+          );
+        } else {
+          await Meta.findOneAndUpdate(
+            {},
+            {
+              $push: {
+                MakesModels: newEntry,
+              },
+            },
+            { upsert: true }
+          );
+        }
+      }
+    }
+
+    // Handle MakesModels updates
+
+    let updatedMeta ;
+    
+    if (BodyColors) {
+      await Meta.findOneAndUpdate(
+        {},
+        {
+          $addToSet: {
+            BodyColors: { $each: BodyColors || [] },
+          },
+        },
+        { upsert: true }
+      );
+    }
+
+    if (BodyTypes) {
+      updatedMeta = await Meta.findOneAndUpdate(
+        {},
+        {
+          $addToSet: {
+            BodyTypes: { $each: BodyTypes || [] },
+          },
+        },
+        { upsert: true, new: true }
+      );
+    }
 
     // Return success response
     res.status(201).json({
-      message: "Metadata created successfully!",
-      data: newMeta,
+      message: "Metadata updated successfully!",
+      data: updatedMeta,
     });
   } catch (error) {
     // Handle error response
     res.status(500).json({
-      message: "Failed to create metadata",
+      message: "Failed to update metadata",
       error: error.message,
     });
   }
@@ -951,7 +1080,6 @@ exports.getInvoices = async (req, res) => {
 };
 
 exports.deleteBid = async (req, res) => {
-
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -977,7 +1105,6 @@ exports.deleteBid = async (req, res) => {
     const isTimeExpired = Date.now() > new Date(car.endTime);
 
     if (String(car.highestBidder) === String(bid.user_id)) {
-
       const sortedBids = await getAuctionHistory(carId);
 
       if (!sortedBids || sortedBids.length === 0) {
@@ -1012,9 +1139,7 @@ exports.deleteBid = async (req, res) => {
         return res
           .status(200)
           .json({ message: "Bid detail removed successfully", updatedBid });
-
       } else {
-
         const secondHighestBid = sortedBids[sortedBids.length - 2];
 
         // Update car with new highest bidder and amount
@@ -1055,11 +1180,10 @@ exports.deleteBid = async (req, res) => {
     }
 
     await session.commitTransaction();
-    
+
     return res
       .status(200)
       .json({ message: "Bid detail removed successfully", updatedBid });
-
   } catch (error) {
     await session.abortTransaction();
     return res
@@ -1069,18 +1193,3 @@ exports.deleteBid = async (req, res) => {
     session.endSession(); // Ensure session is ended
   }
 };
-
-// "SortedBids": [
-//   {
-//       "car_id": "66fac849c49551e74158c57d",
-//       "status": "winner",
-//       "user": [
-//           {
-//               "id": "670eb975ade16d8edacf3ab6",
-//               "email": "kockoski.tose@gmail.com"
-//           }
-//       ],
-//       "bidAmount": 7900,
-//       "bidTime": "2024-10-15T18:54:11.040Z"
-//   }
-// ]

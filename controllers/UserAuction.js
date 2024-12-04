@@ -114,14 +114,13 @@ exports.getDashboardData = async (req, res, next) => {
       .limit(3)
       .lean();
 
-      const activeBids = await Bid.find({ user_id: userId, status: "active" })
+    const activeBids = await Bid.find({ user_id: userId, status: "active" })
       .populate({
         path: "car_id",
         select: "name price endTime highestBid images",
         options: { images: { $slice: 1 } },
       })
       .lean();
-    
 
     const upcomingAuctions = await Car.find({
       startTime: { $gt: new Date() },
@@ -219,11 +218,8 @@ exports.withdrawalBidding = async (req, res, next) => {
   }
 };
 
-
-
 exports.GetAllUsers = async (req, res, next) => {
   try {
-
     const allusers = await User.find(
       {},
       "username phone email image accountType biddingHistory _id"
@@ -231,10 +227,7 @@ exports.GetAllUsers = async (req, res, next) => {
 
     const users = allusers.reverse();
 
-
-
     const usersWithBids = await Promise.all(
-
       users.map(async (user) => {
         const activeBids = await Bid.find({
           user_id: user._id,
@@ -277,11 +270,7 @@ exports.GetAllUsers = async (req, res, next) => {
   }
 };
 
-
-
-
 exports.DeleteUsers = async (req, res, next) => {
-  
   const { userIds } = req.body;
   console.log(userIds);
 
@@ -355,8 +344,6 @@ exports.DeleteUsers = async (req, res, next) => {
 };
 
 
-
-
 exports.ChangeUserRole = async (req, res, next) => {
   const { userId, newRole } = req.body;
 
@@ -388,73 +375,89 @@ exports.ChangeUserRole = async (req, res, next) => {
 
 
 
-
 exports.getAdminDashboardData = async (req, res, next) => {
+
   try {
+
+    const {
+      upcomingAuctionsLimit = 10,
+      draftListingsLimit = 10,
+      recentBidsLimit = 10,
+      newUsersLimit = 10,
+      recentWinnersLimit = 10,
+    } = req.query;
+
+    const getLimit = (limit) => (limit === "All" ? null : parseInt(limit));
+
     const totalActiveAuctions = await Car.countDocuments({ status: "live" });
-    const totalNonActiveAuctions = await Car.countDocuments({ status: { $ne: "live" } });
+    const totalNonActiveAuctions = await Car.countDocuments({
+      status: { $ne: "live" },
+    });
     const totalCarsListed = await Car.countDocuments();
-    const totalBidsPlaced = await Bid.countDocuments();
+
+    const totalBidsPlaced = await Bid.countDocuments({
+      status: { $ne: "active" }, // Assuming the field is named "status"
+    });
 
     const currentDate = new Date();
 
+    const totalActiveBids = await Bid.countDocuments({ status: "active" });
+
     const upcomingAuctions = await Car.find({
-      startTime: { $gte: currentDate }, 
-      status: "live", 
+      startTime: { $gte: currentDate },
+      status: "live",
     })
-      .sort({ startTime: 1 }) 
+      .sort({ startTime: 1 })
       .select({
         name: 1,
         startTime: 1,
         price: 1,
         endTime: 1,
-        images: { $slice: 1 },  
+        images: { $slice: 1 },
       })
-      .limit(5)
+      .limit(getLimit(upcomingAuctionsLimit))
       .lean();
-  
 
-    const DraftListings = await Car.find({status: "draft"})
+    const DraftListings = await Car.find({ status: "draft" })
       .sort({ createdAt: -1 })
       .select({
         name: 1,
         startTime: 1,
         price: 1,
         endTime: 1,
-        images: { $slice: 1 },  
+        images: { $slice: 1 },
         step1: 1,
         step2: 1,
         step3: 1,
       })
-      .limit(5)
+      .limit(getLimit(draftListingsLimit))
       .lean();
+
+
+
+    const recentBidsOnCar = await Car.find({
+      status: "live",
+      highestBid: { $exists: true, $ne: null },
+    })
+      .sort({ updatedAt: -1 })
+      .limit(getLimit(recentBidsLimit))
+      .select({
+        name: 1,
+        highestBid: 1,
+        highestBidder: 1,
+        endTime: 1,
+        images: { $slice: 1 },
+      })
+      .populate("highestBidder", "username email")
+      .lean();
+
       
-
-      const recentBidsOnCar = await Car.find({
-        status: "live", 
-        highestBid: { $exists: true, $ne: null }, 
-    })
-    .sort({ updatedAt: -1 }) 
-    .limit(10) 
-    .select({
-      name: 1,         
-      highestBid: 1,    
-      highestBidder: 1, 
-      endTime: 1,  
-      images: { $slice: 1 },  
- 
-    })
-    .populate("highestBidder", "username email") 
-    .lean();
-    
-
-
     const newUsers = await User.find({
-      createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, 
+      createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
       accountType: { $ne: "Admin" },
     })
       .sort({ createdAt: -1 })
-      .limit(10)
+      .limit(getLimit(newUsersLimit))
       .select("name email username image createdAt")
       .lean();
 
@@ -486,33 +489,30 @@ exports.getAdminDashboardData = async (req, res, next) => {
     ]);
 
     const totalActiveUsers = activeBids.length;
-    const activeUserIds = activeBids.map((bid) => bid.userId); 
+    const activeUserIds = activeBids.map((bid) => bid.userId);
     const totalNonActiveUsers = await User.countDocuments({
-      _id: { $nin: activeUserIds }, 
-      accountType: { $ne: "Admin" }, 
+      _id: { $nin: activeUserIds },
+      accountType: { $ne: "Admin" },
     });
-
 
     const RecentWinners = await Car.find({
       status: "past",
-      highestBid: { $exists: true, $ne: null }, 
+      highestBid: { $exists: true, $ne: null },
     })
-    .sort({ endTime: -1 }) 
-    .limit(15) 
-    .select({
-      name: 1,         
-      highestBid: 1,    
-      highestBidder: 1,
-      images: { $slice: 1 },   
-      endTime: 1,   
-    })
-    .populate({
-      path: "highestBidder", 
-      select: "username email image" , 
-    })
-    .lean(); 
-    
-
+      .sort({ endTime: -1 })
+      .limit(getLimit(recentWinnersLimit))
+      .select({
+        name: 1,
+        highestBid: 1,
+        highestBidder: 1,
+        images: { $slice: 1 },
+        endTime: 1,
+      })
+      .populate({
+        path: "highestBidder",
+        select: "username email image",
+      })
+      .lean();
 
     return res.status(200).json({
       success: true,
@@ -522,12 +522,13 @@ exports.getAdminDashboardData = async (req, res, next) => {
         totalCarsListed,
         totalNonActiveUsers,
         totalBidsPlaced,
+        totalActiveBids,
         totalActiveUsers,
         upcomingAuctions,
-        DraftListings, 
+        DraftListings,
         newUsers,
         RecentWinners,
-        recentBidsOnCar
+        recentBidsOnCar,
       },
     });
   } catch (error) {
@@ -535,5 +536,3 @@ exports.getAdminDashboardData = async (req, res, next) => {
     return next(new ErrorHandler("Error fetching admin dashboard data", 500));
   }
 };
-
-

@@ -219,8 +219,11 @@ cron.schedule("*/5 * * * *", async () => {
   }
 });
 
+
 // Function to end auctions in bulk and update bid statuses
+
 const endAuctionsInBulk = async (auctions) => {
+  
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -287,6 +290,7 @@ const endAuctionsInBulk = async (auctions) => {
 //   }
 // });
 
+
 // const endAuctionsInBulk = async (auctions) => {
 //   const session = await mongoose.startSession();
 //   session.startTransaction();
@@ -318,6 +322,7 @@ const endAuctionsInBulk = async (auctions) => {
 //     console.error("Error ending auctions and updating bid statuses:", err);
 //   }
 // };
+
 
 // const endAuction = async (auctionId) => {
 //   try{

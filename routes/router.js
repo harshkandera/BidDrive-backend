@@ -5,7 +5,7 @@ const {SendOTP , Signup, login ,RegisterToken,isProfileCompleted}=require("../co
 const {ProfileUpdate, Getuser ,ChangePassword} = require ("../controllers/ProfileUpdate")
 const  {SaveForLater,UserBidsForCar,withdrawalBidding,getDashboardData} = require("../controllers/UserAuction")
 const {CreateBidding} = require("../controllers/NewAuctionCar")
-const {FilterListings,createMetadata, getMetadata} =require('../controllers/Listing')
+const {FilterListings,createMetadata, getMetadata , changeCategory} =require('../controllers/Listing')
 const {GetUserNotifications,MarkNotificationAsRead,DeleteNotification}=require('../controllers/Notification')
 
 // const {NewAssignment} = require('../controllers/NewAuctionCar')
@@ -31,9 +31,9 @@ router.get('/user_bids/:userId/:carId',auth,UserBidsForCar);
 router.get('/get_users_detail/:userId',auth,Getuser)
 router.get('/get_user_dashboard/:userId', auth ,isUser,getDashboardData)
 
-router.post("/metadata",auth,isAdmin,createMetadata);
+router.post("/metadata",createMetadata);
 
-// router.post("/isProfileCompleted",isProfileCompleted);
+
 
 router.get("/metadata",getMetadata);
 

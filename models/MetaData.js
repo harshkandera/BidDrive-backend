@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const Metadata = new mongoose.Schema({
+  
   MakesModels: [
     {
       Make: {
@@ -13,6 +14,29 @@ const Metadata = new mongoose.Schema({
       ],
     },
   ],
+
+  ConstructionMakesModels: [
+    {
+      type: { 
+        type: String, 
+        required: true,
+      },
+      makes: [
+        {
+          Make: { 
+            type: String,
+            required: true,
+          },
+          Models: [
+            {
+              type: String,  
+            }
+          ]
+        }
+      ]
+    }
+  ],
+
   BodyColors: [
     {
       type: String,

@@ -1,7 +1,9 @@
 const mongoose = require("mongoose");
 
 const FeaturesSchema = new mongoose.Schema({
+
   vehicleInformation: {
+
     registration_year: { type: Number },
     make: { type: String },
     model: { type: String },
@@ -14,6 +16,7 @@ const FeaturesSchema = new mongoose.Schema({
     color: { type: String },
     location: { type: String },
     mileage: { type: Number },
+
   },
 
   optionsFeature: [
@@ -29,6 +32,7 @@ const FeaturesSchema = new mongoose.Schema({
       value: { type: String },
     },
   ],
+  
   damages: [
     {
       feature: { type: String },
