@@ -372,7 +372,7 @@ exports.FilterListings = async (req, res, next) => {
 
     const match = {};
 
-    console.log(req.body);
+    // console.log(req.body);
 
     // Keyword filtering
     if (keyword) {
@@ -501,10 +501,10 @@ exports.FilterListings = async (req, res, next) => {
       };
     }
 
-    console.log(
-      "Complete filter match object:",
-      JSON.stringify(match, null, 2)
-    );
+    // console.log(
+    //   "Complete filter match object:",
+    //   JSON.stringify(match, null, 2)
+    // );
 
     const cars = await Car.aggregate([
       {
@@ -525,7 +525,7 @@ exports.FilterListings = async (req, res, next) => {
         $match: {
           ...match,
           status: { $nin: ["draft", "past"] },
-          category: { type: category },
+          "category.type": category, 
         },
       },
       {
@@ -578,13 +578,15 @@ exports.FilterListings = async (req, res, next) => {
 exports.GetAuctionsByStatus = async (req, res, next) => {
   try {
     const { status = "live", category = "cars" } = req.params;
-    const { page = 1, limit } = req.query;
+    const { page = 1, limit = 30 } = req.query;
+
+    // console.log(status, category , page, limit);
 
     const now = new Date();
 
     let query = {
+      "category.type": category,
       status: { $ne: "draft" },
-      category: { type: category },
     };
 
     // Filter by auction status
@@ -595,17 +597,21 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
         startTime: { $lte: now },
         endTime: { $gte: now },
       };
+
     } else if (status === "past") {
+
       query = {
         ...query,
         status: "past",
         endTime: { $lt: now },
       };
+
     } else if (status === "upcoming") {
       query = {
         ...query,
         startTime: { $gt: now },
       };
+
     }
 
     let auctions;
@@ -710,6 +716,8 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
 
       auctions = result[0]?.auctions || [];
       total = result[0]?.totalCount[0]?.count || 0;
+
+
     } else {
       auctions = await Car.find(
         query,
@@ -725,6 +733,9 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
         .limit(Number(limit));
 
       total = await Car.countDocuments(query);
+
+      
+
     }
 
     const totalCars = await Car.countDocuments({
@@ -873,8 +884,8 @@ exports.createMetadata = async (req, res) => {
 
     // Handle MakesModels updates
 
-    let updatedMeta ;
-    
+    let updatedMeta;
+
     if (BodyColors) {
       await Meta.findOneAndUpdate(
         {},

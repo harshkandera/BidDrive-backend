@@ -439,7 +439,7 @@ exports.getAdminDashboardData = async (req, res, next) => {
       status: "live",
       highestBid: { $exists: true, $ne: null },
     })
-      .sort({ updatedAt: -1 })
+      .sort({ createdAt: -1 })
       .limit(getLimit(recentBidsLimit))
       .select({
         name: 1,
