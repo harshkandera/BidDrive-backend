@@ -396,7 +396,7 @@ exports.getAdminDashboardData = async (req, res, next) => {
     const totalCarsListed = await Car.countDocuments();
 
     const totalBidsPlaced = await Bid.countDocuments({
-      status: { $ne: "active" }, // Assuming the field is named "status"
+      status: { $ne: "active" },
     });
 
     const currentDate = new Date();
@@ -439,7 +439,7 @@ exports.getAdminDashboardData = async (req, res, next) => {
       status: "live",
       highestBid: { $exists: true, $ne: null },
     })
-      .sort({ createdAt: -1 })
+      .sort({ updatedAt: -1 })
       .limit(getLimit(recentBidsLimit))
       .select({
         name: 1,
@@ -450,6 +450,32 @@ exports.getAdminDashboardData = async (req, res, next) => {
       })
       .populate("highestBidder", "username email")
       .lean();
+
+
+      // const recentbids = await Bid.find({
+      // })
+      // .sort({updatedAt: -1})
+      // .limit(getLimit(recentBidsLimit))
+      // .select({ car_id: 1 }) 
+      // .populate({
+      //   path: "car_id", 
+      //   select: {
+      //     name: 1,
+      //     description: 1,
+      //     price: 1,
+      //     images: { $slice: 1 },
+      //     highestBid: 1,
+      //     highestBidder: 1,
+      //     status: 1
+      //   },
+      //   populate: {
+      //     path: "highestBidder",
+      //     select: {
+      //       username: 1,
+      //       email: 1,
+      //     },
+      //   },
+      // });
 
       
     const newUsers = await User.find({

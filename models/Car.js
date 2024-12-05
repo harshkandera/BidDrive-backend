@@ -88,8 +88,9 @@ const CarSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-CarSchema.index({ endTime: 1, status: 1 }); // For faster auction end checks
-CarSchema.index({ highestBid: 1 }); // For bid-based queries
+CarSchema.index({ endTime: 1, status: 1 });
+CarSchema.index({ highestBid: 1 }); 
 CarSchema.index({ created_at: 1 });
+CarSchema.index({ updatedAt: 1 });
 
 module.exports = mongoose.model("Car", CarSchema);
