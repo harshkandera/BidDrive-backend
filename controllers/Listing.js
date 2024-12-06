@@ -525,7 +525,7 @@ exports.FilterListings = async (req, res, next) => {
         $match: {
           ...match,
           status: { $nin: ["draft", "past"] },
-          "category.type": category, 
+          "category.type": category,
         },
       },
       {
@@ -597,21 +597,17 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
         startTime: { $lte: now },
         endTime: { $gte: now },
       };
-
     } else if (status === "past") {
-
       query = {
         ...query,
         status: "past",
         endTime: { $lt: now },
       };
-
     } else if (status === "upcoming") {
       query = {
         ...query,
         startTime: { $gt: now },
       };
-
     }
 
     let auctions;
@@ -716,8 +712,6 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
 
       auctions = result[0]?.auctions || [];
       total = result[0]?.totalCount[0]?.count || 0;
-
-
     } else {
       auctions = await Car.find(
         query,
@@ -733,9 +727,6 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
         .limit(Number(limit));
 
       total = await Car.countDocuments(query);
-
-      
-
     }
 
     const totalCars = await Car.countDocuments({
@@ -820,100 +811,156 @@ exports.GetAuctionsDetailsById = async (req, res, next) => {
 
 exports.createMetadata = async (req, res) => {
   try {
-    const { MakesModels, BodyColors, BodyTypes, ConstructionMakesModels } =
-      req.body;
+    const {
+      MakesModels,
+      BodyColors,
+      BodyTypes,
+      ConstructionMakesModels,
+      existingConstructionMakeAndModels,
+      existingMakeAndModels,
+    } = req.body;
 
-    if (ConstructionMakesModels) {
-      for (const newEntry of ConstructionMakesModels) {
-        const existingType = await Meta.findOne({
-          "ConstructionMakesModels.type": newEntry.type,
+    if (
+      existingMakeAndModels.Make?.trim() &&
+      Array.isArray(existingMakeAndModels.Models) &&
+      existingMakeAndModels.Models.length > 0
+    ) {
+      const metaData = await Meta.find({});
+      const updatedMakesModels = metaData[0].MakesModels.map((item) => {
+        if (item.Make.trim() === existingMakeAndModels.Make.trim()) {
+          return {
+            Make: existingMakeAndModels.Make,
+            Models: existingMakeAndModels.Models,
+          };
+        }
+        return item;
+      });
+      metaData[0].MakesModels = updatedMakesModels;
+      await metaData[0].save();
+    }
+
+    if (
+      existingConstructionMakeAndModels.type?.trim() &&
+      !existingConstructionMakeAndModels.Make?.trim() &&
+      Array.isArray(existingConstructionMakeAndModels.Makes) &&
+      existingConstructionMakeAndModels.Makes.length > 0
+    ) {
+      const metaData = await Meta.find({});
+      const updatedConstructionMakesModels =
+        metaData[0].ConstructionMakesModels.map((item) => {
+          if (
+            item.type.trim() === existingConstructionMakeAndModels.type.trim()
+          ) {
+            return {
+              type: existingConstructionMakeAndModels.type,
+              makes: existingConstructionMakeAndModels.Makes,
+            };
+          }
+          return item;
+        });
+      metaData[0].ConstructionMakesModels = updatedConstructionMakesModels;
+      await metaData[0].save();
+    }
+
+    if (
+      existingConstructionMakeAndModels.Make?.trim() &&
+      existingConstructionMakeAndModels.type?.trim()
+    ) {
+      const metaData = await Meta.find({});
+
+      const updatedConstructionMakesModels =
+        metaData[0].ConstructionMakesModels.map((item) => {
+          if (
+            item.type.trim() === existingConstructionMakeAndModels.type.trim()
+          ) {
+            // Map over the makes array and update the specific Make
+            const updatedMakes = item.makes.map((make) => {
+              if (
+                make.Make.trim() ===
+                existingConstructionMakeAndModels.Make.trim()
+              ) {
+                return {
+                  Make: existingConstructionMakeAndModels.Make,
+                  Models: existingConstructionMakeAndModels.Models, // Replace Models with the new Models
+                };
+              }
+              return make;
+            });
+
+            return {
+              type: existingConstructionMakeAndModels.type,
+              makes: updatedMakes,
+            };
+          }
+          return item;
         });
 
-        if (existingType) {
-          // Update makes and models if type exists
-          await Meta.findOneAndUpdate(
-            { "ConstructionMakesModels.type": newEntry.type },
-            {
-              $addToSet: {
-                "ConstructionMakesModels.$.makes": { $each: newEntry.makes },
-              },
-            }
-          );
-        } else {
-          await Meta.findOneAndUpdate(
-            {},
-            {
-              $push: {
-                ConstructionMakesModels: newEntry,
-              },
+      metaData[0].ConstructionMakesModels = updatedConstructionMakesModels;
+      await metaData[0].save();
+    }
+
+    if (ConstructionMakesModels.length > 0) {
+      for (const item of ConstructionMakesModels) {
+        await Meta.findOneAndUpdate(
+          {},
+          {
+            $addToSet: {
+              ConstructionMakesModels: item,
             },
-            { upsert: true }
-          );
-        }
+          },
+          { upsert: true, new: true }
+        );
       }
     }
 
-    if (MakesModels) {
-      for (const newEntry of MakesModels) {
-        const existingMake = await Meta.findOne({
-          "MakesModels.make": newEntry.make,
-        });
-
-        if (existingMake) {
-          await Meta.findOneAndUpdate(
-            { "MakesModels.make": newEntry.make },
-            {
-              $addToSet: {
-                "MakesModels.$.models": { $each: newEntry.models },
-              },
-            }
-          );
-        } else {
-          await Meta.findOneAndUpdate(
-            {},
-            {
-              $push: {
-                MakesModels: newEntry,
-              },
+    if (MakesModels.length > 0) {
+      for (const item of MakesModels) {
+        const newEntry = await Meta.findOneAndUpdate(
+          {},
+          {
+            $addToSet: {
+              MakesModels: item,
             },
-            { upsert: true }
-          );
-        }
+          },
+          { upsert: true, new: true }
+        );
+        console.log("Updated MakesModels entry:", newEntry);
       }
     }
 
-    // Handle MakesModels updates
-
-    let updatedMeta;
-
-    if (BodyColors) {
-      await Meta.findOneAndUpdate(
-        {},
-        {
-          $addToSet: {
-            BodyColors: { $each: BodyColors || [] },
+    if (BodyColors.length > 0) {
+      for (const item of BodyColors) {
+        const newEntry = await Meta.findOneAndUpdate(
+          {},
+          {
+            $addToSet: {
+              BodyColors: item,
+            },
           },
-        },
-        { upsert: true }
-      );
+          { upsert: true, new: true }
+        );
+        console.log("Updated BodyColors entry:", newEntry);
+      }
     }
 
-    if (BodyTypes) {
-      updatedMeta = await Meta.findOneAndUpdate(
-        {},
-        {
-          $addToSet: {
-            BodyTypes: { $each: BodyTypes || [] },
+    if (BodyTypes.length > 0) {
+      for (const item of BodyTypes) {
+        const newEntry = await Meta.findOneAndUpdate(
+          {},
+          {
+            $addToSet: {
+              BodyTypes: item,
+            },
           },
-        },
-        { upsert: true, new: true }
-      );
+          { upsert: true, new: true }
+        );
+        console.log("Updated BodyTypes entry:", newEntry);
+      }
     }
 
-    // Return success response
     res.status(201).json({
+      success: true,
       message: "Metadata updated successfully!",
-      data: updatedMeta,
     });
   } catch (error) {
     // Handle error response
@@ -1202,5 +1249,54 @@ exports.deleteBid = async (req, res) => {
       .json({ message: "Error removing bid detail", error });
   } finally {
     session.endSession(); // Ensure session is ended
+  }
+};
+
+exports.EditBiddingDate = async (req, res, next) => {
+  try {
+const {carIds , data} = req.body;
+
+if(carIds.length === 0){
+  return next(new ErrorHandler("Select The Listing To Update", 400));
+}  
+
+if(!data || data.startTime === "" || data.endTime === ""){
+  return next(new ErrorHandler("Enter The Bidding Date", 400));
+}
+
+const startTime = new Date(data.startTime);
+const endTime = new Date(data.endTime);
+
+if(startTime > endTime){
+  return next(new ErrorHandler("End Time Must Be After Start Time", 400));
+}
+
+let result;
+
+if(data.status){
+   result = await  Car.updateMany({ _id: { $in: carIds } }, { $set: { startTime, endTime ,status:"live" } })
+}else{
+   result = await  Car.updateMany({ _id: { $in: carIds } }, { $set: { startTime, endTime } })
+}
+
+
+if(result.modifiedCount > 0){
+  return res.status(200).json({
+    success: true,
+    message: "Bidding Date Updated Successfully",
+  });
+}else{
+  return res.status(400).json({
+    success: false,
+    message: "Failed To Update Bidding Date",
+  });
+}
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed To Update Bidding Date",
+      error,
+    })
   }
 };
