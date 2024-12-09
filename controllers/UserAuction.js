@@ -535,7 +535,6 @@ exports.getAdminDashboardData = async (req, res, next) => {
         newUsers,
         RecentWinners,
         recentBidsOnCar,
-        RecentBids
       },
     });
   } catch (error) {
