@@ -112,16 +112,17 @@ exports.CreateBidding = async (req, res, next) => {
       // Update the car's highest bid
       car.highestBid = bidAmount;
       car.highestBidder = user_id;
+      car.bidTime = new Date();
       car.totalBids += 1;
 
-      // Update Firebase (if applicable)
-      const data = {
-        carId: car_id,
-        bidAmount: Number(bidAmount), // Convert bidAmount to number
-        userId: user_id,
-      };
+      // // Update Firebase (if applicable)
+      // const data = {
+      //   carId: car_id,
+      //   bidAmount: Number(bidAmount), // Convert bidAmount to number
+      //   userId: user_id,
+      // };
 
-      await updateHighestBid(data);
+      // await updateHighestBid(data);
 
       await Promise.all([
         car.save({ session }),
@@ -157,13 +158,13 @@ exports.CreateBidding = async (req, res, next) => {
 
     console.log("new bids", newBid);
 
-    const data = {
-      carId: car_id,
-      bidAmount: Number(bidAmount),
-      userId: user_id,
-    };
+    // const data = {
+    //   carId: car_id,
+    //   bidAmount: Number(bidAmount),
+    //   userId: user_id,
+    // };
 
-    await updateHighestBid(data);
+    // await updateHighestBid(data);
 
     // Update car and user with the new bid details
     if (!Array.isArray(car.bids)) car.bids = [];
@@ -172,6 +173,7 @@ exports.CreateBidding = async (req, res, next) => {
 
     car.highestBid = bidAmount;
     car.highestBidder = user_id;
+    car.bidTime = new Date();
     car.totalBids += 1;
 
     if (!Array.isArray(user.biddingHistory)) user.biddingHistory = [];

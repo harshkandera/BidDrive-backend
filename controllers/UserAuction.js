@@ -435,9 +435,12 @@ exports.getAdminDashboardData = async (req, res, next) => {
 
 
 
+
+
     const recentBidsOnCar = await Car.find({
       status: "live",
       highestBid: { $exists: true, $ne: null },
+      highestBidder: { $exists: true, $ne: null },
     })
       .sort({ updatedAt: -1 })
       .limit(getLimit(recentBidsLimit))
@@ -452,30 +455,6 @@ exports.getAdminDashboardData = async (req, res, next) => {
       .lean();
 
 
-      // const recentbids = await Bid.find({
-      // })
-      // .sort({updatedAt: -1})
-      // .limit(getLimit(recentBidsLimit))
-      // .select({ car_id: 1 }) 
-      // .populate({
-      //   path: "car_id", 
-      //   select: {
-      //     name: 1,
-      //     description: 1,
-      //     price: 1,
-      //     images: { $slice: 1 },
-      //     highestBid: 1,
-      //     highestBidder: 1,
-      //     status: 1
-      //   },
-      //   populate: {
-      //     path: "highestBidder",
-      //     select: {
-      //       username: 1,
-      //       email: 1,
-      //     },
-      //   },
-      // });
 
       
     const newUsers = await User.find({
@@ -524,6 +503,7 @@ exports.getAdminDashboardData = async (req, res, next) => {
     const RecentWinners = await Car.find({
       status: "past",
       highestBid: { $exists: true, $ne: null },
+      highestBidder: { $exists: true, $ne: null },
     })
       .sort({ endTime: -1 })
       .limit(getLimit(recentWinnersLimit))
@@ -555,6 +535,7 @@ exports.getAdminDashboardData = async (req, res, next) => {
         newUsers,
         RecentWinners,
         recentBidsOnCar,
+        RecentBids
       },
     });
   } catch (error) {

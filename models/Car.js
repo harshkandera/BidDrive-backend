@@ -45,6 +45,9 @@ const CarSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    bidTime:{
+      type:Date
+    },
     totalBids: {
       type: Number,
       default: 0,
