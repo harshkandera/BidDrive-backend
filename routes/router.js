@@ -4,7 +4,7 @@ const {auth,isUser,isAdmin, } = require("../middlewares/auth")
 const {SendOTP , Signup, login ,RegisterToken,isProfileCompleted}=require("../controllers/Auth")
 const {ProfileUpdate, Getuser ,ChangePassword} = require ("../controllers/ProfileUpdate")
 const  {SaveForLater,UserBidsForCar,withdrawalBidding,getDashboardData} = require("../controllers/UserAuction")
-const {CreateBidding} = require("../controllers/NewAuctionCar")
+const {CreateBidding , BuyNow} = require("../controllers/NewAuctionCar")
 const {FilterListings,createMetadata, getMetadata , changeCategory} =require('../controllers/Listing')
 const {GetUserNotifications,MarkNotificationAsRead,DeleteNotification}=require('../controllers/Notification')
 
@@ -25,6 +25,7 @@ router.post("/change_password/:id",auth,ChangePassword)
 router.post('/filter',FilterListings)
 router.post("/mark_notifications_read/:userId",auth ,isUser ,MarkNotificationAsRead);
 router.post('/delete_notifications/:userId',auth ,isUser ,DeleteNotification);
+router.post('/buy_now/:userId/:carId',auth,isUser,BuyNow);
 
 router.get("/get_user_notifications/:userId",auth,isUser,GetUserNotifications);
 router.get('/user_bids/:userId/:carId',auth,UserBidsForCar);

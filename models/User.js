@@ -23,7 +23,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-
     image: {
       type: String,
     },
@@ -47,6 +46,10 @@ const userSchema = new mongoose.Schema(
     },
     companyName: {
       type: String,
+    },
+    buyNowCount: {
+      type: Number,
+      default: 0,
     },
     cart: [
       {

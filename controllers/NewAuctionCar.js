@@ -9,10 +9,13 @@ const mongoose = require("mongoose");
 const { notifyUsers } = require("./Notification");
 
 exports.CreateBidding = async (req, res, next) => {
+  
   const session = await mongoose.startSession();
 
   try {
+
     const { bidAmount } = req.body;
+
     const { carId: car_id, userId: user_id } = req.params;
 
     if (!car_id || !user_id || !bidAmount) {
@@ -61,6 +64,18 @@ exports.CreateBidding = async (req, res, next) => {
     if (!user) {
       return next(new ErrorHandler("User not found", 404));
     }
+
+    
+    if(car?.buyNow?.isBuyNow && car?.buyNow?.buyNowPrice < bidAmount){
+      return next(
+        new ErrorHandler(
+          `Bid amount should not be greater than ${car?.buyNow?.buyNowPrice}`,
+          400
+        )
+      );
+    }
+
+
 
     const activeBidsForUser = await Bid.find({
       user_id,
@@ -115,7 +130,7 @@ exports.CreateBidding = async (req, res, next) => {
       car.bidTime = new Date();
       car.totalBids += 1;
 
-      // // Update Firebase (if applicable)
+      // Update Firebase (if applicable)
       // const data = {
       //   carId: car_id,
       //   bidAmount: Number(bidAmount), // Convert bidAmount to number
@@ -163,10 +178,10 @@ exports.CreateBidding = async (req, res, next) => {
     //   bidAmount: Number(bidAmount),
     //   userId: user_id,
     // };
-
     // await updateHighestBid(data);
 
     // Update car and user with the new bid details
+
     if (!Array.isArray(car.bids)) car.bids = [];
 
     car.bids.push({ bidId: newBid[0]._id }); // Ensure bidId is correct
@@ -192,7 +207,7 @@ exports.CreateBidding = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       message: "Bid placed successfully",
-      data: { bid: newBid[0] ,isProfileCompleted },
+      data: { bid: newBid[0] , isProfileCompleted },
     });
   } catch (err) {
     console.log(err);
@@ -202,8 +217,11 @@ exports.CreateBidding = async (req, res, next) => {
   }
 };
 
+
+
 // end the auction
 const cron = require("node-cron");
+
 
 // Cron job to check for ended auctions every 5 minutes
 cron.schedule("*/5 * * * *", async () => {
@@ -220,6 +238,7 @@ cron.schedule("*/5 * * * *", async () => {
     console.error("Error during auction check:", err);
   }
 });
+
 
 
 // Function to end auctions in bulk and update bid statuses
@@ -277,82 +296,165 @@ const endAuctionsInBulk = async (auctions) => {
   }
 };
 
-// cron.schedule("*/5 * * * *", async () => {
-//   try {
-//     const auctions = await Car.find({
-//       status: "live",
-//       endTime: { $lte: Date.now() },
-//     });
-
-//     if (auctions.length > 0) {
-//       await endAuctionsInBulk(auctions);
-//     }
-//   } catch (err) {
-//     console.error("Error during auction check:", err);
-//   }
-// });
 
 
-// const endAuctionsInBulk = async (auctions) => {
-//   const session = await mongoose.startSession();
-//   session.startTransaction();
-
-//   try {
-//     const auctionIds = auctions.map((auction) => auction._id);
-
-//     await Car.updateMany(
-//       { _id: { $in: auctionIds } },
-//       { $set: { status: "past" } },
-//       { session }
-//     );
-
-//     await Bid.updateMany(
-//       { car_id: { $in: auctionIds }, status: "active" },
-//       { $set: { status: "completed" } },
-//       { session }
-//     );
-
-//     await session.commitTransaction();
-//     session.endSession();
-
-//     console.log(
-//       `${auctionIds.length} auctions ended and bids marked as 'completed'.`
-//     );
-//   } catch (err) {
-//     await session.abortTransaction();
-//     session.endSession();
-//     console.error("Error ending auctions and updating bid statuses:", err);
-//   }
-// };
 
 
-// const endAuction = async (auctionId) => {
-//   try{
+exports.BuyNow = async (req, res, next) => {
+  const session = await mongoose.startSession();
 
-//     const auction = await Car.findById(auctionId)
+  try {
+    session.startTransaction();
 
-//   if (!auction) return;
+    const { carId: car_id, userId: user_id } = req.params;
 
-//   auction.status = 'past';
-//   await auction.save();
+    if (!car_id || !user_id) {
+      throw new ErrorHandler("All fields are required", 400);
+    }
 
-//   // If there are bids, notify the highest bidder
-//   // if (auction.highestBidder) {
-//   //   const winner = auction.highestBidder;
+    if (!mongoose.isValidObjectId(car_id) || !mongoose.isValidObjectId(user_id)) {
+      throw new ErrorHandler("Invalid car or user ID", 400);
+    }
 
-//   //   // Notify the winner via email or socket (Socket.IO example)
-//   //   io.to(winner._id).emit('auctionEnded', {
-//   //     message: `Congratulations, you've won the auction for ${auction.carId.name}!`,
-//   //     highestBid: auction.highestBid,
-//   //   });
+    const car = await Car.findById(car_id).session(session);
+    const user = await User.findById(user_id).session(session);
 
-//     // You can also send an email notification using a service like SendGrid
-//   // } else {
+    if (!car) {
+      throw new ErrorHandler("Car not found", 404);
+    }
 
-//   //   console.log('No bids placed for this auction');
-//   // }
+    if (!user) {
+      throw new ErrorHandler("User not found", 404);
+    }
 
-//   }catch(err){
-//     next(err)
-//   }
-// };
+    if (!user.isProfileCompleted) {
+      return res.status(200).json({
+        success: true,
+        message: "Profile is not completed.",
+        data: {
+          isProfileCompleted: user.isProfileCompleted,
+        },
+      });
+    }
+
+    if (!car.buyNow?.isBuyNow) {
+      throw new ErrorHandler("Buy Now is not enabled for this car", 400);
+    }
+
+    if(user?.buyNowCount >= 1){
+      throw new ErrorHandler("You can buy now only once", 400);
+    }
+
+    if (
+      car.buyNow.isBuyNow &&
+      (!car.buyNow.buyNowPrice || car.buyNow.buyNowPrice === "")
+    ) {
+      throw new ErrorHandler("Buy Now price is not set", 400);
+    }
+
+
+
+    const bidAmount = Number(car.buyNow.buyNowPrice);
+
+    if (car.status === "draft" || car.status === "past") {
+      throw new ErrorHandler("Car is not live", 400);
+    }
+
+    const currentTime = new Date();
+    if (currentTime > new Date(car.endTime) || car.status === "past") {
+      throw new ErrorHandler("Car Auction has ended", 400);
+    }
+
+    if (currentTime < new Date(car.startTime) || car.status === "draft") {
+      throw new ErrorHandler("Car Auction has not started yet", 400);
+    }
+
+    const activeBidForThisCar = await Bid.findOne({
+      user_id,
+      car_id,
+      status: "active",
+    }).session(session);
+
+    if (activeBidForThisCar) {
+
+      activeBidForThisCar.bids.push({
+        bidAmount,
+        bid_time: new Date(),
+      });
+
+      activeBidForThisCar.status = "active";
+
+      car.highestBid = bidAmount;
+      car.highestBidder = user_id;
+      car.bidTime = new Date();
+      car.totalBids += 1;
+
+      user.buyNowCount += 1;
+
+
+      await Promise.all([
+        car.save({ session }),
+        user.save({ session }),
+        activeBidForThisCar.save({ session }),
+      ]);
+
+      await notifyUsers(car_id, bidAmount, user_id, car.images[0]);
+
+      const auctions = await Car.find({ _id: car_id }).session(session);
+      await endAuctionsInBulk(auctions);
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.status(200).json({
+        success: true,
+        message: "Car bought successfully",
+      });
+    }
+
+    const newBid = await Bid.create([
+      {
+        car_id,
+        user_id,
+        bids: [{ bidAmount, bid_time: new Date() }],
+        status: "active",
+      },
+    ], { session });
+
+    car.bids = car.bids || [];
+    car.bids.push({ bidId: newBid[0]._id });
+    car.highestBid = bidAmount;
+    car.highestBidder = user_id;
+    car.bidTime = new Date();
+    car.totalBids += 1;
+
+    user.biddingHistory = user.biddingHistory || [];
+    user.biddingHistory.push({ bidId: newBid[0]._id });
+    user.buyNowCount += 1;
+
+    await Promise.all([
+      car.save({ session }),
+      user.save({ session }),
+    ]);
+
+    await notifyUsers(car.name, car_id, bidAmount, user_id, car.images[0]);
+
+    const auctions = await Car.find({ _id: car_id }).session(session);
+    await endAuctionsInBulk(auctions);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      success: true,
+      message: "Car bought successfully",
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    next(error);
+  }
+};
+
+

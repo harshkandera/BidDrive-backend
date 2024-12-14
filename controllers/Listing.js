@@ -69,7 +69,11 @@ exports.CreateListing = async (req, res, next) => {
         minimumBidDifference,
         category,
         subcategory,
+        isBuyNow,
+        buyNowPrice,
       } = req.body;
+
+      // console.log(buyNowPrice);
 
       const missingFields = [];
       if (!name) missingFields.push("name");
@@ -80,8 +84,13 @@ exports.CreateListing = async (req, res, next) => {
       if (!minimumBidDifference) missingFields.push("minimumBidDifference");
       if (!category) missingFields.push("category");
 
+
       if (category === "construction" && !subcategory) {
         missingFields.push("subcategory");
+      }
+
+      if(isBuyNow &&  (!buyNowPrice || buyNowPrice === "")){
+        missingFields.push("buyNowPrice");
       }
 
       if (missingFields.length > 0) {
@@ -98,6 +107,11 @@ exports.CreateListing = async (req, res, next) => {
         subcategory: subcategory,
       };
 
+      const buyNow = {
+        isBuyNow:isBuyNow,
+        buyNowPrice: buyNowPrice
+      }
+
       if (id) {
         return await updateCarListing(
           id,
@@ -109,6 +123,7 @@ exports.CreateListing = async (req, res, next) => {
             endTime,
             minimumBidDifference,
             category: vehcileCategory,
+            buyNow:buyNow
           },
           1,
           res,
@@ -124,6 +139,7 @@ exports.CreateListing = async (req, res, next) => {
         endTime,
         minimumBidDifference,
         category: vehcileCategory,
+        buyNow:buyNow,
         step1: true,
       });
 

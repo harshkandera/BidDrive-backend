@@ -29,6 +29,15 @@ const CarSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    buyNow:{
+      isBuyNow:{
+        type:Boolean,
+        default:false
+      },
+      buyNowPrice:{
+        type:Number
+      }
+    },
     minimumBidDifference: {
       type: Number,
       default: 100,
