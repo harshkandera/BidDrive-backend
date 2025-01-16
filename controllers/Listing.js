@@ -555,6 +555,7 @@ exports.FilterListings = async (req, res, next) => {
           endTime: 1,
           status: 1,
           price: 1,
+          buyNow: 1,
         },
       },
       {
@@ -657,6 +658,7 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
             as: "vehicleFeaturesDetails",
           },
         },
+        { $sample: { size: Number(limit) } }, // Randomize the results
         {
           $facet: {
             auctions: [
@@ -669,6 +671,7 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
                   startTime: 1,
                   endTime: 1,
                   highestBid: 1,
+                  buyNow: 1,
                   totalBids: { $size: "$bids" }, // Total bids count
                   status: 1,
                   created_at: 1,
@@ -729,18 +732,45 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
       auctions = result[0]?.auctions || [];
       total = result[0]?.totalCount[0]?.count || 0;
     } else {
-      auctions = await Car.find(
-        query,
-        "name description images price startTime endTime highestBid totalBids status created_at vehicleFeatures"
-      )
-        .select({ images: { $slice: 1 } })
-        .populate("highestBidder", "username email image phone")
-        .populate(
-          "vehicleFeatures",
-          "vehicleInformation.registration_year vehicleInformation.make vehicleInformation.model"
-        )
-        .skip((page - 1) * limit)
-        .limit(Number(limit));
+      auctions = await Car.aggregate([
+        { $match: query }, // Filter by status and category
+        { $sample: { size: Number(limit) } }, // Randomize the results
+        {
+          $lookup: {
+            from: "users",
+            localField: "highestBidder",
+            foreignField: "_id",
+            as: "highestBidderDetails",
+          },
+        },
+        {
+          $lookup: {
+            from: "features",
+            localField: "vehicleFeatures",
+            foreignField: "_id",
+            as: "vehicleFeaturesDetails",
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            description: 1,
+            images: { $slice: ["$images", 1] },
+            price: 1,
+            startTime: 1,
+            endTime: 1,
+            highestBid: 1,
+            buyNow: 1,
+            totalBids: 1,
+            status: 1,
+            created_at: 1,
+            vehicleFeatures: {
+              vehicleInformation: 1,
+            },
+            highestBidder: 1,
+          },
+        },
+      ]);
 
       total = await Car.countDocuments(query);
     }
@@ -762,6 +792,7 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
       auctions,
       totalAuctions,
     });
+    
   } catch (error) {
     console.error("Error fetching auctions:", error);
     next(error);
