@@ -22,9 +22,6 @@ jobs:
     needs: build
     runs-on: self-hosted
     steps:
-      - name: Login to Docker Hub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
       - name: Pull image from Docker Hub
         run: docker pull harshkandera/biddrive:latest
 
@@ -33,3 +30,6 @@ jobs:
 
       - name: Run Docker Container
         run: docker run -d -p 8000:8000 --name nodejs-app-container -e MONOGODB_URL='${{ secrets.MONOGODB_URL }}' -e JWT_SECRET='${{ secrets.JWT_SECRET }}' -e CLOUD_NAME='${{ secrets.CLOUD_NAME }}' -e API_KEY='${{ secrets.API_KEY }}' -e API_SECRET='${{ secrets.API_SECRET }}' -e MAIL_HOST='${{ secrets.MAIL_HOST }}' -e MAIL_PASS='${{ secrets.MAIL_PASS }}' -e MAIL_USER='${{ secrets.MAIL_USER }}' -e NODE_ENV='production' -e PORT='${{ secrets.PORT }}' harshkandera/biddrive:latest
+
+
+
