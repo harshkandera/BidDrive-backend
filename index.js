@@ -9,17 +9,17 @@ const { init } = require('./config/socketConfig');
 app.use(express.json())
 
 
-const corsOptions = {
-  origin: ['https://bid-drive.com', 'https://www.bid-drive.com'], // Add your allowed origins
-  methods: ['GET', 'POST'], // Specify the allowed methods
-  credentials: true, // Allow credentials (if needed)
-};
-
 // const corsOptions = {
-//   origin: 'http://localhost:3000',
+//   origin: ['https://bid-drive.com', 'https://www.bid-drive.com'], // Add your allowed origins
 //   methods: ['GET', 'POST'], // Specify the allowed methods
-//   credentials: true,
+//   credentials: true, // Allow credentials (if needed)
 // };
+
+const corsOptions = {
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST'], // Specify the allowed methods
+  credentials: true,
+};
 
 
 

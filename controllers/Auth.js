@@ -5,14 +5,17 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const ErrorHandler = require("../utils/error");
-
+const mailsender = require("../utils/mailsender");
+const {SendWelcomeEmail} = require("../emailTemplates/Welcome");
 // sendotp
+
+
 exports.SendOTP = async (req, res) => {
   try {
     // fetch email
-    const { email: lowerCaseEmail, password, confirmPassword } = req.body;
+    const { email: lowerCaseEmail, password, confirmPassword ,country,firstname,lastname,phone,preferredLanguage,username} = req.body;
 
-    if (!lowerCaseEmail || !password || !confirmPassword) {
+    if (!lowerCaseEmail || !password || !confirmPassword || !country || !firstname || !lastname || !phone || !preferredLanguage || !username) {
       return res.status(403).json({
         success: false,
         message: "All fields are required",
@@ -40,53 +43,122 @@ exports.SendOTP = async (req, res) => {
       });
     }
 
-    // generate otp
-    var otp = OtpGenenrator.generate(6, {
-      upperCaseAlphabets: false,
-      lowerCaseAlphabets: false,
-      specialChars: false,
-    });
-
-    // console.log("otp generated :", otp);
-
-    // check unique otp
-    const result = await OTP.findOne({ otp: otp });
-
-    while (result) {
-      otp = OtpGenenrator.generate(6, {
-        upperCaseAlphabets: false,
-        lowerCaseAlphabets: false,
-        specialChars: false,
-      });
-      const result = await OTP.findOne({ otp: otp });
-    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const user = await User.create({
+      email,
+      password,
+      country,
+      firstname,
+      lastname,
+      phone,
+      language:preferredLanguage,
+      username,
+      password: hashedPassword,
+      isProfileCompleted: true,
+    });
 
-    // console.log("hashed password:", hashedPassword);
-
-    const otpPayload = { email, otp, password: hashedPassword };
-
-    // create an entry in db
-
-    const otpbody = await OTP.create(otpPayload);
-
-    console.log("otp body:",otpbody);
+    await mailsender(email, "verification Email from Bid-drive.com", SendWelcomeEmail(username,email));
+    // console.log("otp body:",otpbody);
 
     // return res succuessful
     res.status(200).json({
       success: true,
-      message: "OTP send to your email successfully",
-      otp,
+      message: "User created successfully",
+      user,
     });
+
   } catch (error) {
     console.log(error);
     return res.status(400).json({
       success: false,
-      message: "Failed to send otp",
+      message: "Failed to Create user",
     });
   }
 };
+
+// exports.SendOTP = async (req, res) => {
+//   try {
+//     // fetch email
+//     const { email: lowerCaseEmail, password, confirmPassword } = req.body;
+
+//     if (!lowerCaseEmail || !password || !confirmPassword) {
+//       return res.status(403).json({
+//         success: false,
+//         message: "All fields are required",
+//       });
+//     }
+
+//     if (password !== confirmPassword) {
+//       return res.status(403).json({
+//         success: false,
+//         message: "passowrd and confirm password should be same",
+//       });
+//     }
+
+//     const email = lowerCaseEmail.toLowerCase();
+
+//     // console.log(req.body);
+
+//     // validate email
+//     const checkUserPresent = await User.findOne({ email });
+
+//     if (checkUserPresent) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Email already exits",
+//       });
+//     }
+
+//     // generate otp
+//     var otp = OtpGenenrator.generate(6, {
+//       upperCaseAlphabets: false,
+//       lowerCaseAlphabets: false,
+//       specialChars: false,
+//     });
+
+//     // console.log("otp generated :", otp);
+
+//     // check unique otp
+//     const result = await OTP.findOne({ otp: otp });
+
+//     while (result) {
+//       otp = OtpGenenrator.generate(6, {
+//         upperCaseAlphabets: false,
+//         lowerCaseAlphabets: false,
+//         specialChars: false,
+//       });
+//       const result = await OTP.findOne({ otp: otp });
+//     }
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     // console.log("hashed password:", hashedPassword);
+
+//     const otpPayload = { email, otp, password: hashedPassword };
+
+//     // create an entry in db
+
+//     const otpbody = await OTP.create(otpPayload);
+
+//     console.log("otp body:",otpbody);
+
+//     // return res succuessful
+//     res.status(200).json({
+//       success: true,
+//       message: "OTP send to your email successfully",
+//       otp,
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     return res.status(400).json({
+//       success: false,
+//       message: "Failed to send otp",
+//     });
+//   }
+// };
+
 
 // signup
 exports.Signup = async (req, res) => {
@@ -163,6 +235,8 @@ exports.Signup = async (req, res) => {
     });
   }
 };
+
+
 
 // loginj
 
