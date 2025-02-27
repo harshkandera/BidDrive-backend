@@ -10,21 +10,21 @@ const init = (server) => {
     return io;
   }
 
-  // io = new Server(server, {
-  //   cors: {
-  //     origin: ['https://bid-drive.com', 'https://www.bid-drive.com'],
-  //     methods: ["GET", "POST"],
-  //     credentials: true,
-  //   },
-  // });
-
   io = new Server(server, {
     cors: {
-      origin: "http://localhost:3000",
+      origin: ['https://bid-drive.com', 'https://www.bid-drive.com'],
       methods: ["GET", "POST"],
       credentials: true,
     },
   });
+
+  // io = new Server(server, {
+  //   cors: {
+  //     origin: "http://localhost:3000",
+  //     methods: ["GET", "POST"],
+  //     credentials: true,
+  //   },
+  // });
 
   // io.use((socket, next) => {
 
