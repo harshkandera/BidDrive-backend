@@ -4,6 +4,7 @@ const cloudinary = require("cloudinary").v2;
 const path = require("path");
 const bcrypt = require("bcrypt");
 const axios = require("axios");
+const Review = require("../models/Review");
 
 // Function to check if the file type is supported
 function isFileSupported(type, supportedTypes) {
@@ -91,7 +92,6 @@ exports.ProfileUpdate = async (req, res, next) => {
             message: "Image uploaded successfully",
             image: imageUrl,
           });
-
         } catch (err) {
           console.error(`Failed to upload ${image.name} to Cloudinary:`, err);
           return res.status(500).json({
@@ -119,7 +119,6 @@ exports.ProfileUpdate = async (req, res, next) => {
         message: "All fields are required",
       });
     }
-
 
     let image = req.files ? req.files.image : null;
 
@@ -306,17 +305,20 @@ exports.ChangePassword = async (req, res, next) => {
     const { oldPassword, newPassword, confirmPassword } = req.body;
     const { id } = req.params;
 
-
     if (!oldPassword) {
       return next(new ErrorHandler("Old password is required", 400));
     }
 
-    if(!newPassword || !confirmPassword){
-        return next(new ErrorHandler("New password and confirm password is required", 400));
+    if (!newPassword || !confirmPassword) {
+      return next(
+        new ErrorHandler("New password and confirm password is required", 400)
+      );
     }
 
     if (newPassword !== confirmPassword) {
-      return next(new ErrorHandler("New password and confirm password do not match", 400));
+      return next(
+        new ErrorHandler("New password and confirm password do not match", 400)
+      );
     }
 
     // Find the user by ID
@@ -377,5 +379,242 @@ exports.Translator = async (req, res, next) => {
     return res.json({ translatedText: response.data[0].translations[0].text });
   } catch (error) {
     next(error);
+  }
+};
+
+// controllers/reviewController.js
+
+exports.Review = async (req, res, next) => {
+  try {
+    const {
+      name,
+      location,
+      rating,
+      title,
+      content,
+      type,
+      date,
+      verified,
+      videoUrl,
+    } = req.body;
+
+    // Validation for required fields
+    if (!name || !rating || !title || !content || !type || !date || !location) {
+      return res.status(400).json({
+        success: false,
+        error: "All required fields must be provided.",
+      });
+    }
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        error: "Rating must be between 1 and 5",
+      });
+    }
+
+    // Validate type
+    const validTypes = ["text", "image", "video"];
+
+    const supportedTypes = ["jpg", "jpeg", "png"];
+
+    // Validate rating range
+
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid review type",
+      });
+    }
+
+    let image = req.files ? req.files.media : null;
+
+    let imageUrl = null;
+
+    if (image) {
+      const fileType = path.extname(image.name).toLowerCase().slice(1);
+
+      if (!isFileSupported(fileType, supportedTypes)) {
+        return res.status(400).json({
+          success: false,
+          message: `${image.name}: Unsupported file type.`,
+        });
+      }
+
+      imageUrl = await uploadFileToCloudinary(image, "ReviewImages");
+    }
+
+    // Create new review object
+    const reviewData = {
+      name,
+      location,
+      rating,
+      title,
+      content,
+      type,
+      date,
+      verified: verified || false,
+      media: imageUrl,
+      videoUrl: videoUrl || "",
+    };
+
+    const testimonial = await Review.create(reviewData);
+
+    return res.status(201).json({
+      success: true,
+      message: "Review added successfully",
+      testimonial,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// Get all reviews
+exports.getAllReviews = async (req, res) => {
+  try {
+    const testimonials = await Review.find().sort({ date: -1 }); // Sort by date, newest first
+
+    res.status(200).json({
+      success: true,
+      count: testimonials.length,
+      testimonials,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// Delete review
+exports.deleteReview = async (req, res) => {
+  try {
+    const testimonial = await Review.findByIdAndDelete(req.params.id);
+
+    if (!testimonial) {
+      return res.status(404).json({
+        success: false,
+        error: "Review not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Review deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// Update review verification status
+exports.updateReview = async (req, res) => {
+  try {
+
+    const {
+      name,
+      location,
+      rating,
+      title,
+      content,
+      type,
+      date,
+      verified,
+      videoUrl,
+      media
+    } = req.body;
+    const supportedTypes = ["jpg", "jpeg", "png"];
+
+
+    // Validation for required fields
+    if (!name || !rating || !title || !content || !type || !date || !location) {
+      return res.status(400).json({
+        success: false,
+        error: "All required fields must be provided.",
+      });
+    }
+
+    // Validate rating range
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        error: "Rating must be between 1 and 5",
+      });
+    }
+
+    // Validate type
+    const validTypes = ["text", "image", "video"];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid review type",
+      });
+    }
+
+    let image = req.files ? req.files.media : null;
+
+    let imageUrl = null;
+
+    if (image) {
+      const fileType = path.extname(image.name).toLowerCase().slice(1);
+
+      if (!isFileSupported(fileType, supportedTypes)) {
+        return res.status(400).json({
+          success: false,
+          message: `${image.name}: Unsupported file type.`,
+        });
+      }
+
+      imageUrl = await uploadFileToCloudinary(image, "ReviewImages");
+    }
+
+    // Create new review object
+    const reviewData = {
+      name,
+      location,
+      rating,
+      title,
+      content,
+      type,
+      date,
+      verified: verified || false,
+      media: imageUrl || media,
+      videoUrl: videoUrl || "",
+    };
+
+    const testimonial = await Review.findByIdAndUpdate(
+      req.params.id,
+      reviewData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!testimonial) {
+      return res.status(404).json({
+        success: false,
+        error: "Review not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Review updated successfully",
+      testimonial,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
