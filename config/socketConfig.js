@@ -52,6 +52,8 @@ const init = (server) => {
 
   // });
 
+  //commented here
+
   io.use((socket, next) => {
 
     cookieParser()(socket.request, {}, (err) => {
