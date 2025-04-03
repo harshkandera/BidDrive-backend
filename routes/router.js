@@ -5,7 +5,7 @@ const {SendOTP , Signup, login ,RegisterToken,isProfileCompleted}=require("../co
 const {ProfileUpdate, Getuser ,ChangePassword} = require ("../controllers/ProfileUpdate")
 const  {SaveForLater,UserBidsForCar,withdrawalBidding,getDashboardData} = require("../controllers/UserAuction")
 const {CreateBidding , BuyNow} = require("../controllers/NewAuctionCar")
-const {FilterListings,createMetadata, getMetadata , changeCategory} =require('../controllers/Listing')
+const {FilterListings,createMetadata, getMetadata , changeCategory,FilterListingsForUsa} =require('../controllers/Listing')
 const {GetUserNotifications,MarkNotificationAsRead,DeleteNotification}=require('../controllers/Notification')
 
 // const {NewAssignment} = require('../controllers/NewAuctionCar')
@@ -23,6 +23,7 @@ router.post('/create_bidding/:userId/:carId',auth,isUser,CreateBidding);
 router.post('/withdrawal_bidding/:userId/:carId',auth,isUser,withdrawalBidding);
 router.post("/change_password/:id",auth,ChangePassword)
 router.post('/filter',FilterListings)
+router.post('/filter/usa',FilterListingsForUsa)
 router.post("/mark_notifications_read/:userId",auth ,isUser ,MarkNotificationAsRead);
 router.post('/delete_notifications/:userId',auth ,isUser ,DeleteNotification);
 router.post('/buy_now/:userId/:carId',auth,isUser,BuyNow);

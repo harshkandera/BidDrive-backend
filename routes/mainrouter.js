@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {auth,isUser,isAdmin} = require("../middlewares/auth")
 
-const {CreateListing,GetDraftListing,GetListingById,ChangeStatus,GetAuctionsByStatus,GetAuctionsDetailsById ,deleteCarsByIds,UploadInvoice,getInvoices,deleteBid,EditBiddingDate}  = require('../controllers/Listing')
+const {CreateListing,GetDraftListing,GetListingById,ChangeStatus,GetAuctionsByStatus,GetAuctionsDetailsById ,deleteCarsByIds,UploadInvoice,getInvoices,deleteBid,EditBiddingDate,GetAuctionsByStatusForUsa}  = require('../controllers/Listing')
 const {ChangeUserRole,DeleteUsers,GetAllUsers,getAdminDashboardData} = require('../controllers/UserAuction')
 const {Review,deleteReview,updateReview,getAllReviews} = require('../controllers/ProfileUpdate')
 
@@ -25,6 +25,8 @@ router.get('/get_draft_listing',GetDraftListing);
 router.get('/get_listing_by_id/:id',GetListingById);
 router.get('/get_all_users',auth,isAdmin,GetAllUsers);
 router.get('/get_acutions/:status/:category',GetAuctionsByStatus)
+router.get('/get_acutions/usa/:status/:category',GetAuctionsByStatusForUsa)
+
 router.get('/get_auctionsbyid/:id',auth,isAdmin,GetAuctionsDetailsById)
 router.get('/admin_dashboard',getAdminDashboardData)
 router.get('/get_invoices/:carId/:userId',auth,isAdmin,getInvoices);

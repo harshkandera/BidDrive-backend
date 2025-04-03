@@ -10,13 +10,13 @@ app.use(express.json())
 
 
 const corsOptions = {
-  origin: ['https://bid-drive.com', 'https://www.bid-drive.com'], // Add your allowed origins
+  origin: ['https://bid-drive.com', 'https://www.bid-drive.com','https://www.us.bid-drive.com','https://us.bid-drive.com'], // Add your allowed origins
   methods: ['GET', 'POST'], // Specify the allowed methods
   credentials: true, // Allow credentials (if needed)
 };
 
 // const corsOptions = {
-//   origin: 'http://localhost:3000',
+//   origin:['http://localhost:3000','http://localhost:3001'],
 //   methods: ['GET', 'POST'], // Specify the allowed methods
 //   credentials: true,
 // };

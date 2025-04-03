@@ -12,7 +12,7 @@ const init = (server) => {
 
   io = new Server(server, {
     cors: {
-      origin: ['https://bid-drive.com', 'https://www.bid-drive.com'],
+      origin: ['https://bid-drive.com', 'https://www.bid-drive.com','https://www.us.bid-drive.com','https://us.bid-drive.com'],
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -52,7 +52,7 @@ const init = (server) => {
 
   // });
 
-  //commented here
+  
 
   io.use((socket, next) => {
 

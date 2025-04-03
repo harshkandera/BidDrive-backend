@@ -71,6 +71,7 @@ exports.CreateListing = async (req, res, next) => {
         subcategory,
         isBuyNow,
         buyNowPrice,
+        isForUsa
       } = req.body;
 
       // console.log(buyNowPrice);
@@ -123,7 +124,8 @@ exports.CreateListing = async (req, res, next) => {
             endTime,
             minimumBidDifference,
             category: vehcileCategory,
-            buyNow:buyNow
+            buyNow:buyNow,
+            isForUsa
           },
           1,
           res,
@@ -140,6 +142,7 @@ exports.CreateListing = async (req, res, next) => {
         minimumBidDifference,
         category: vehcileCategory,
         buyNow:buyNow,
+        isForUsa,
         step1: true,
       });
 
@@ -542,6 +545,7 @@ exports.FilterListings = async (req, res, next) => {
           ...match,
           status: { $nin: ["draft", "past"] },
           "category.type": category,
+          isForUsa: { $in: [false, null] },
         },
       },
       {
@@ -577,6 +581,8 @@ exports.FilterListings = async (req, res, next) => {
 
     const total = await Car.countDocuments({
       status: { $nin: ["draft", "past"] },
+      isForUsa: { $in: [false, null]}, 
+    
     });
 
     res.json({
@@ -604,7 +610,8 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
     let query = {
       "category.type": category,
       status: { $ne: "draft" },
-    };
+      isForUsa: { $in: [false, null] },
+        };
 
     // Filter by auction status
     if (status === "live") {
@@ -777,10 +784,12 @@ exports.GetAuctionsByStatus = async (req, res, next) => {
 
     const totalCars = await Car.countDocuments({
       status: { $nin: ["draft", "past"] },
+      isForUsa: { $in: [false, null]},
     });
 
     const totalAuctions = await Car.countDocuments({
       status: { $ne: "draft" },
+      isForUsa: { $in: [false, null]},
     });
 
     return res.status(200).json({
@@ -1345,5 +1354,449 @@ if(result.modifiedCount > 0){
       message: "Failed To Update Bidding Date",
       error,
     })
+  }
+};
+
+
+
+
+
+
+
+
+exports.FilterListingsForUsa = async (req, res, next) => {
+  try {
+    const {
+      keyword,
+      make,
+      model,
+      fromyear,
+      tillyear,
+      price,
+      kms_driven,
+      bodyType,
+      page = 1,
+      limit = 32,
+      category = "construction",
+    } = req.body;
+
+    const match = {};
+
+    // console.log(req.body);
+
+    // Keyword filtering
+    if (keyword) {
+      match.$or = [
+        { name: { $regex: keyword, $options: "i" } },
+        { description: { $regex: keyword, $options: "i" } },
+        {
+          "vehicleFeatures.vehicleInformation.make": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          "vehicleFeatures.vehicleInformation.model": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          "vehicleFeatures.vehicleInformation.kms_driven": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          "vehicleFeatures.vehicleInformation.body_type": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          "vehicleFeatures.vehicleInformation.fuel_type": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          "vehicleFeatures.vehicleInformation.transmission": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          "vehicleFeatures.vehicleInformation.color": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          "vehicleFeatures.vehicleInformation.location": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          "vehicleFeatures.vehicleInformation.registration_year": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          "vehicleFeatures.vehicleInformation.trim": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          "vehicleFeatures.vehicleInformation.mileage": {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+      ];
+    }
+
+    // Year range filtering (only if both fromyear and tillyear are provided)
+    if (fromyear || tillyear) {
+      const fromYear = fromyear ? Number(fromyear) : undefined;
+      const tillYear = tillyear ? Number(tillyear) : undefined;
+
+      if (fromYear || tillYear) {
+        match["vehicleFeatures.vehicleInformation.registration_year"] = {
+          ...(fromYear && { $gte: fromYear }),
+          ...(tillYear && { $lte: tillYear }),
+        };
+      }
+    }
+
+    // Make filtering
+    if (make) {
+      match["vehicleFeatures.vehicleInformation.make"] = {
+        $regex: make,
+        $options: "i", // Case insensitive
+      };
+    }
+
+    // Model filtering (case insensitive)
+    if (model) {
+      match["vehicleFeatures.vehicleInformation.model"] = {
+        $regex: model,
+        $options: "i", // Case insensitive
+      };
+    }
+
+    // Price range filtering
+    if (price) {
+      const [minPrice, maxPrice] = price.split("-").map(Number);
+      match["vehicleFeatures.vehicleInformation.price"] = {
+        ...(minPrice && { $gte: minPrice }),
+        ...(maxPrice && { $lte: maxPrice !== Infinity ? maxPrice : undefined }),
+      };
+    }
+
+    // KMs Driven filtering
+    if (kms_driven) {
+      match["vehicleFeatures.vehicleInformation.kms_driven"] = {
+        $lte: Number(kms_driven),
+      };
+    }
+
+    // Body Type filtering (case insensitive)
+    if (bodyType) {
+      match["vehicleFeatures.vehicleInformation.body_type"] = {
+        $regex: bodyType,
+        $options: "i", // Case insensitive
+      };
+    }
+
+    // console.log(
+    //   "Complete filter match object:",
+    //   JSON.stringify(match, null, 2)
+    // );
+
+    const cars = await Car.aggregate([
+      {
+        $lookup: {
+          from: "features",
+          localField: "vehicleFeatures",
+          foreignField: "_id",
+          as: "vehicleFeatures",
+        },
+      },
+      {
+        $unwind: {
+          path: "$vehicleFeatures",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $match: {
+          ...match,
+          status: { $nin: ["draft", "past"] },
+          "category.type": category,
+          isForUsa: true,
+        },
+      },
+      {
+        $project: {
+          name: 1,
+          description: 1,
+          images: { $slice: ["$images", 1] },
+          highestBid: 1,
+          totalBids: 1,
+          startTime: 1,
+          endTime: 1,
+          status: 1,
+          price: 1,
+          buyNow: 1,
+        },
+      },
+      {
+        $facet: {
+          paginatedResults: [
+            { $skip: (page - 1) * limit }, // Skip documents
+            { $limit: limit }, // Limit to page size
+          ],
+          totalCount: [
+            { $count: "count" }, // Count total documents matching the filter
+          ],
+        },
+      },
+    ]);
+
+    // Getting the total count of cars
+    const totalItems =
+      cars[0].totalCount.length > 0 ? cars[0].totalCount[0].count : 0;
+
+    const total = await Car.countDocuments({
+      status: { $nin: ["draft", "past"] },
+      isForUsa: true, 
+    
+    });
+
+    res.json({
+      cars: cars[0].paginatedResults,
+      totalCars: totalItems,
+      total,
+      pages: Math.ceil(totalItems / limit), // Calculate total pages
+      page: page,
+    });
+  } catch (error) {
+    console.error("Error fetching cars:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+exports.GetAuctionsByStatusForUsa = async (req, res, next) => {
+  try {
+    const { status = "live", category = "construction" } = req.params;
+    const { page = 1, limit = 30 } = req.query;
+
+    // console.log(status, category , page, limit);
+
+    const now = new Date();
+
+    let query = {
+      "category.type": category,
+      status: { $ne: "draft" },
+      isForUsa:true,
+        };
+
+    // Filter by auction status
+    if (status === "live") {
+      query = {
+        ...query,
+        status: "live",
+        startTime: { $lte: now },
+        endTime: { $gte: now },
+      };
+    } else if (status === "past") {
+      query = {
+        ...query,
+        status: "past",
+        endTime: { $lt: now },
+      };
+    } else if (status === "upcoming") {
+      query = {
+        ...query,
+        startTime: { $gt: now },
+      };
+    }
+
+    let auctions;
+    let total;
+
+    if (status === "active") {
+      const result = await Car.aggregate([
+        { $match: query }, // Use the constructed query
+        {
+          $lookup: {
+            from: "bids",
+            localField: "_id",
+            foreignField: "car_id",
+            as: "bids",
+          },
+        },
+        { $match: { "bids.0": { $exists: true } } }, // Ensure there is at least one bid
+        {
+          $lookup: {
+            from: "users",
+            localField: "highestBidder",
+            foreignField: "_id",
+            as: "highestBidderDetails",
+          },
+        },
+        {
+          $lookup: {
+            from: "features",
+            localField: "vehicleFeatures", // Ensure this is the correct field reference
+            foreignField: "_id",
+            as: "vehicleFeaturesDetails",
+          },
+        },
+        { $sample: { size: Number(limit) } }, // Randomize the results
+        {
+          $facet: {
+            auctions: [
+              {
+                $project: {
+                  name: 1,
+                  description: 1,
+                  images: { $slice: ["$images", 1] },
+                  price: 1,
+                  startTime: 1,
+                  endTime: 1,
+                  highestBid: 1,
+                  buyNow: 1,
+                  totalBids: { $size: "$bids" }, // Total bids count
+                  status: 1,
+                  created_at: 1,
+                  vehicleFeatures: {
+                    vehicleInformation: {
+                      registration_year: {
+                        $arrayElemAt: [
+                          "$vehicleFeaturesDetails.vehicleInformation.registration_year",
+                          0,
+                        ],
+                      },
+                      make: {
+                        $arrayElemAt: [
+                          "$vehicleFeaturesDetails.vehicleInformation.make",
+                          0,
+                        ],
+                      },
+                      model: {
+                        $arrayElemAt: [
+                          "$vehicleFeaturesDetails.vehicleInformation.model",
+                          0,
+                        ],
+                      },
+                    },
+                  },
+                  highestBidder: {
+                    $cond: {
+                      if: { $gt: [{ $size: "$highestBidderDetails" }, 0] },
+                      then: {
+                        username: {
+                          $arrayElemAt: ["$highestBidderDetails.username", 0],
+                        },
+                        email: {
+                          $arrayElemAt: ["$highestBidderDetails.email", 0],
+                        },
+                        image: {
+                          $arrayElemAt: ["$highestBidderDetails.image", 0],
+                        },
+                        phone: {
+                          $arrayElemAt: ["$highestBidderDetails.phone", 0],
+                        },
+                      },
+                      else: null, // Return null if no highest bidder found
+                    },
+                  },
+                },
+              },
+              { $skip: (page - 1) * limit },
+              { $limit: Number(limit) },
+            ],
+            totalCount: [
+              { $count: "count" }, // Count total documents matching the query
+            ],
+          },
+        },
+      ]);
+
+      auctions = result[0]?.auctions || [];
+      total = result[0]?.totalCount[0]?.count || 0;
+    } else {
+
+      auctions = await Car.aggregate([
+
+        { $match: query }, // Filter by status and category
+        { $sample: { size: Number(limit) } }, // Randomize the results
+        {
+          $lookup: {
+            from: "users",
+            localField: "highestBidder",
+            foreignField: "_id",
+            as: "highestBidderDetails",
+          },
+        },
+        {
+          $lookup: {
+            from: "features",
+            localField: "vehicleFeatures",
+            foreignField: "_id",
+            as: "vehicleFeaturesDetails",
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            description: 1,
+            images: { $slice: ["$images", 1] },
+            price: 1,
+            startTime: 1,
+            endTime: 1,
+            highestBid: 1,
+            buyNow: 1,
+            totalBids: 1,
+            status: 1,
+            created_at: 1,
+            vehicleFeatures: {
+              vehicleInformation: 1,
+            },
+            highestBidder: 1,
+          },
+        },
+      ]);
+
+      total = await Car.countDocuments(query);
+    }
+
+    const totalCars = await Car.countDocuments({
+      status: { $nin: ["draft", "past"] },
+      isForUsa:true,
+    });
+
+    const totalAuctions = await Car.countDocuments({
+      status: { $ne: "draft" },
+      isForUsa: true,
+    });
+
+    return res.status(200).json({
+      total,
+      totalCars,
+      page: Number(page),
+      limit: Number(limit),
+      pages: Math.ceil(total / limit),
+      auctions,
+      totalAuctions,
+    });
+    
+  } catch (error) {
+    console.error("Error fetching auctions:", error);
+    next(error);
   }
 };
